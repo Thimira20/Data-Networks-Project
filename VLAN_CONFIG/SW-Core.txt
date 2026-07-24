@@ -1,0 +1,210 @@
+enable
+configure terminal
+
+! ----------------------------------------------------
+! Hostname
+! ----------------------------------------------------
+hostname SW-Core
+
+! ----------------------------------------------------
+! SSH & Local User Configuration
+! ----------------------------------------------------
+username admin privilege 15 secret admin123
+ip domain-name campus.uor.lk
+crypto key generate rsa general-keys modulus 1024
+
+line vty 0 15
+ transport input ssh
+ login local
+exit
+
+! ----------------------------------------------------
+! SNMP Configuration
+! ----------------------------------------------------
+snmp-server community public RO
+snmp-server community private RW
+snmp-server host 10.10.40.100 version 2c public
+snmp-server enable traps
+
+! ----------------------------------------------------
+! VLAN Creation
+! ----------------------------------------------------
+vlan 10
+ name VLAN_DEIE
+vlan 20
+ name VLAN_DCEE
+vlan 30
+ name VLAN_DMME
+vlan 40
+ name VLAN_DIS
+vlan 99
+ name MGMT
+vlan 100
+ name NATIVE
+exit
+
+! ----------------------------------------------------
+! Spanning Tree Root configuration
+! ----------------------------------------------------
+spanning-tree vlan 1-100 root primary
+
+! ----------------------------------------------------
+! Switchports: Trunk Uplinks to Distribution Switches
+! ----------------------------------------------------
+interface fastEthernet 0/1
+ description TRUNK_TO_SW-D-DCEE
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 100
+ switchport trunk allowed vlan 10,20,30,40,99,100
+ no shutdown
+
+interface fastEthernet 0/2
+ description TRUNK_TO_SW-D-DEIE
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 100
+ switchport trunk allowed vlan 10,20,30,40,99,100
+ no shutdown
+
+interface fastEthernet 0/3
+ description TRUNK_TO_SW-D-DMME
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 100
+ switchport trunk allowed vlan 10,20,30,40,99,100
+ no shutdown
+
+interface fastEthernet 0/4
+ description TRUNK_TO_SW-D-DIS
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 100
+ switchport trunk allowed vlan 10,20,30,40,99,100
+ no shutdown
+
+! ----------------------------------------------------
+! Routed Link to R-CORE
+! ----------------------------------------------------
+interface gigabitEthernet 0/1
+ description LINK_TO_R-CORE
+ no switchport
+ ip address 10.0.0.1 255.255.255.252
+ no shutdown
+exit
+
+! ----------------------------------------------------
+! Access Control Lists (ACLs) Design
+! ----------------------------------------------------
+! ACL for VLAN_DEIE (VLAN 10)
+ip access-list extended ACL-DEIE-IN
+ permit ip 10.10.10.0 0.0.0.255 10.10.40.0 0.0.0.255
+ deny ip 10.10.10.0 0.0.0.255 10.10.20.0 0.0.0.255
+ deny ip 10.10.10.0 0.0.0.255 10.10.30.0 0.0.0.255
+ deny ip 10.10.10.0 0.0.0.255 10.99.99.0 0.0.0.255
+ permit ip 10.10.10.0 0.0.0.255 any
+exit
+
+! ACL for VLAN_DCEE (VLAN 20)
+ip access-list extended ACL-DCEE-IN
+ permit tcp 10.10.20.0 0.0.0.255 10.10.40.0 0.0.0.255 eq 80
+ permit tcp 10.10.20.0 0.0.0.255 10.10.40.0 0.0.0.255 eq 443
+ deny ip 10.10.20.0 0.0.0.255 10.10.40.0 0.0.0.255
+ deny ip 10.10.20.0 0.0.0.255 10.10.10.0 0.0.0.255
+ deny ip 10.10.20.0 0.0.0.255 10.10.30.0 0.0.0.255
+ deny ip 10.10.20.0 0.0.0.255 10.99.99.0 0.0.0.255
+ permit ip 10.10.20.0 0.0.0.255 any
+exit
+
+! ACL for VLAN_DMME (VLAN 30) - Completely isolated
+ip access-list extended ACL-DMME-IN
+ deny ip 10.10.30.0 0.0.0.255 10.10.10.0 0.0.0.255
+ deny ip 10.10.30.0 0.0.0.255 10.10.20.0 0.0.0.255
+ deny ip 10.10.30.0 0.0.0.255 10.10.40.0 0.0.0.255
+ deny ip 10.10.30.0 0.0.0.255 10.99.99.0 0.0.0.255
+ deny ip 10.10.30.0 0.0.0.255 any
+exit
+
+! ACL for VLAN_DIS (VLAN 40) - Servers
+ip access-list extended ACL-DIS-IN
+ permit udp host 10.10.40.100 10.99.99.0 0.0.0.255 eq 161
+ permit udp host 10.10.40.100 10.0.0.0 0.0.0.255 eq 161
+ permit udp host 10.10.40.100 10.0.1.0 0.0.0.255 eq 161
+ permit icmp host 10.10.40.100 10.99.99.0 0.0.0.255
+ permit icmp host 10.10.40.100 10.0.0.0 0.0.0.255
+ permit icmp host 10.10.40.100 10.0.1.0 0.0.0.255
+ permit ip 10.10.40.0 0.0.0.255 10.10.10.0 0.0.0.255
+ permit tcp 10.10.40.0 0.0.0.255 established 10.10.20.0 0.0.0.255
+ deny ip 10.10.40.0 0.0.0.255 10.10.20.0 0.0.0.255
+ deny ip 10.10.40.0 0.0.0.255 10.10.30.0 0.0.0.255
+ deny ip 10.10.40.0 0.0.0.255 10.99.99.0 0.0.0.255
+ deny ip 10.10.40.0 0.0.0.255 any
+exit
+
+! ACL for MGMT (VLAN 99)
+ip access-list extended ACL-MGMT-IN
+ permit tcp 10.99.99.0 0.0.0.255 10.99.99.0 0.0.0.255 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.0.0 0.0.0.255 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.1.0 0.0.0.255 eq 22
+ permit udp 10.99.99.0 0.0.0.255 host 10.10.40.100 eq 162
+ permit udp 10.99.99.0 0.0.0.255 host 10.10.40.100 eq 161
+ permit icmp 10.99.99.0 0.0.0.255 host 10.10.40.100
+ permit icmp 10.99.99.0 0.0.0.255 10.99.99.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 10.10.10.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 10.10.20.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 10.10.30.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 10.10.40.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 any
+exit
+
+! ----------------------------------------------------
+! IP Routing and SVIs (Gateways)
+! ----------------------------------------------------
+ip routing
+
+interface vlan 10
+ description GW_VLAN_DEIE
+ ip address 10.10.10.1 255.255.255.0
+ ip access-group ACL-DEIE-IN in
+ no shutdown
+
+interface vlan 20
+ description GW_VLAN_DCEE
+ ip address 10.10.20.1 255.255.255.0
+ ip access-group ACL-DCEE-IN in
+ no shutdown
+
+interface vlan 30
+ description GW_VLAN_DMME
+ ip address 10.10.30.1 255.255.255.0
+ ip access-group ACL-DMME-IN in
+ no shutdown
+
+interface vlan 40
+ description GW_VLAN_DIS
+ ip address 10.10.40.1 255.255.255.0
+ ip access-group ACL-DIS-IN in
+ no shutdown
+
+interface vlan 99
+ description GW_VLAN_MGMT
+ ip address 10.99.99.1 255.255.255.0
+ ip access-group ACL-MGMT-IN in
+ no shutdown
+
+! ----------------------------------------------------
+! Dynamic Routing (OSPF)
+! ----------------------------------------------------
+router ospf 1
+ network 10.0.0.0 0.0.0.3 area 0
+ network 10.10.10.0 0.0.0.255 area 0
+ network 10.10.20.0 0.0.0.255 area 0
+ network 10.10.30.0 0.0.0.255 area 0
+ network 10.10.40.0 0.0.0.255 area 0
+ network 10.99.99.0 0.0.0.255 area 0
+ passive-interface default
+ no passive-interface gigabitEthernet 0/1
+exit
+
+end
+write memory

@@ -1,0 +1,66 @@
+enable
+configure terminal
+
+! ----------------------------------------------------
+! Hostname
+! ----------------------------------------------------
+hostname R-EDGE
+
+! ----------------------------------------------------
+! SSH & Local User Configuration
+! ----------------------------------------------------
+username admin privilege 15 secret admin123
+ip domain-name campus.uor.lk
+crypto key generate rsa general-keys modulus 1024
+
+line vty 0 4
+ transport input ssh
+ login local
+exit
+
+! ----------------------------------------------------
+! SNMP Configuration
+! ----------------------------------------------------
+snmp-server community public RO
+snmp-server community private RW
+snmp-server host 10.10.40.100 version 2c public
+snmp-server enable traps
+
+! ----------------------------------------------------
+! Interfaces Configuration
+! ----------------------------------------------------
+interface gigabitEthernet 0/0/0
+ description LINK_TO_R-CORE
+ ip address 10.0.1.2 255.255.255.252
+ ip nat inside
+ no shutdown
+exit
+
+interface gigabitEthernet 0/0/1
+ description LINK_TO_INTERNET_ISP
+ ip address dhcp
+ ip nat outside
+ no shutdown
+exit
+
+! ----------------------------------------------------
+! Dynamic Routing (OSPF)
+! ----------------------------------------------------
+router ospf 1
+ network 10.0.1.0 0.0.0.3 area 0
+ default-information originate
+exit
+
+! ----------------------------------------------------
+! NAT Overload (PAT) Configuration
+! ----------------------------------------------------
+! Matching only VLAN_DEIE (10.10.10.0/24) and VLAN_DCEE (10.10.20.0/24)
+ip access-list standard NAT_ACL
+ permit 10.10.10.0 0.0.0.255
+ permit 10.10.20.0 0.0.0.255
+exit
+
+ip nat inside source list NAT_ACL interface gigabitEthernet 0/0/1 overload
+
+end
+write memory

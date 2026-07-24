@@ -1,0 +1,16 @@
+configure terminal
+ vlan 10
+  name VLAN_DEIE
+ vlan 20
+  name VLAN_DCEE
+ vlan 30
+  name VLAN_DMME
+ vlan 40
+  name VLAN_DIS
+ vlan 99
+  name MGMT
+ vlan 100
+  name NATIVE   
+end
+
+write memory

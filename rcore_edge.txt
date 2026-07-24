@@ -1,0 +1,63 @@
+enable
+configure terminal
+ interface gigabitEthernet 0/0/1
+  ip address 10.0.1.1 255.255.255.252
+  no shutdown
+  description LINK_TO_R-EDGE
+end
+write memory
+
+
+enable
+configure terminal
+ interface gigabitEthernet 0/0/0
+  ip address 10.0.1.2 255.255.255.252
+  no shutdown
+  description LINK_TO_R-CORE
+end
+write memory
+
+
+enable
+configure terminal
+ router ospf 1
+  network 10.0.1.0 0.0.0.3 area 0
+end
+write memory
+
+
+
+enable
+configure terminal
+ router ospf 1
+  network 10.0.1.0 0.0.0.3 area 0
+end
+write memory
+
+
+network  10.0.1.0   0.0.0.3   area 0
+         │           │          │
+         │           │          └── Which OSPF area (area 0 = backbone)
+         │           └───────────── Wildcard mask (which IPs to match)
+         └───────────────────────── Starting IP of the range
+
+
+Subnet mask:   255.255.255.252   → 11111111.11111111.11111111.11111100
+Wildcard:        0.0.0.3         → 00000000.00000000.00000000.00000011
+
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  R-CORE                              R-EDGE                     │
+│  Gig0/0/1 = 10.0.1.1                Gig0/0/0 = 10.0.1.2        │
+│                │                              │                 │
+│                └──────── cable ───────────────┘                 │
+│                                                                 │
+│  Step 1: R-CORE sends OSPF Hello → "I'm here, area 0"          │
+│  Step 2: R-EDGE receives it, replies with its own Hello         │
+│  Step 3: They exchange their routing tables (LSAs)             │
+│  Step 4: State reaches FULL ← this is the goal                 │
+│                                                                 │
+│  Now R-CORE knows: "to reach internet → go to 10.0.1.2"        │
+│  And campus PCs can eventually reach R-EDGE via R-CORE         │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘

@@ -1,0 +1,80 @@
+configure terminal
+ interface vlan 99
+  ip address 10.99.99.11 255.255.255.0
+  no shutdown
+ ip default-gateway 10.99.99.1
+end
+write memory
+
+configure terminal
+ interface vlan 99
+  ip address 10.99.99.12 255.255.255.0
+  no shutdown
+ ip default-gateway 10.99.99.1
+end
+write memory
+
+configure terminal
+ interface vlan 99
+  ip address 10.99.99.13 255.255.255.0
+  no shutdown
+ ip default-gateway 10.99.99.1
+end
+write memory
+
+configure terminal
+ interface vlan 99
+  ip address 10.99.99.14 255.255.255.0
+  no shutdown
+ ip default-gateway 10.99.99.1
+end
+write memory
+
+configure terminal
+ interface vlan 99
+  ip address 10.99.99.21 255.255.255.0
+  no shutdown
+ ip default-gateway 10.99.99.1
+end
+write memory
+
+configure terminal
+ interface vlan 99
+  ip address 10.99.99.22 255.255.255.0
+  no shutdown
+ ip default-gateway 10.99.99.1
+end
+write memory
+
+configure terminal
+ interface vlan 99
+  ip address 10.99.99.23 255.255.255.0
+  no shutdown
+ ip default-gateway 10.99.99.1
+end
+write memory
+
+configure terminal
+ interface vlan 99
+  ip address 10.99.99.24 255.255.255.0
+  no shutdown
+ ip default-gateway 10.99.99.1
+end
+write memory
+
+
+configure terminal
+ interface vlan 99
+  ip address 10.99.99.24 255.255.255.0
+  no shutdown
+ ip default-gateway 10.99.99.1
+end
+write memory
+
+configure terminal
+ interface vlan 99
+  ip address 10.99.99.11 255.255.255.0
+  no shutdown
+ ip default-gateway 10.99.99.1
+end
+write memory

@@ -1,0 +1,81 @@
+enable
+configure terminal
+ hostname SW-D-DEIE 
+end
+write memory 
+
+
+
+enable
+configure terminal
+ hostname SW-D-DCEE
+end
+write memory 
+
+
+
+enable
+configure terminal
+ hostname SW-D-DMME
+end
+write memory 
+
+
+
+enable
+configure terminal
+ hostname SW-D-DIS
+end
+write memory 
+
+
+enable
+configure terminal
+ hostname SW-A-DEIE
+end
+write memory 
+
+
+enable
+configure terminal
+ hostname SW-A-DCEE
+end
+write memory 
+
+
+enable
+configure terminal
+ hostname SW-A-DMME
+end
+write memory 
+
+
+enable
+configure terminal
+ hostname SW-A-DIS
+end
+write memory 
+
+
+enable
+configure terminal
+ hostname SW-Core
+end
+write memory 
+
+
+enable
+configure terminal
+ hostname R-CORE
+end
+write memory 
+
+
+
+enable
+configure terminal
+ hostname R-EDGE
+end
+write memory 
+
+
