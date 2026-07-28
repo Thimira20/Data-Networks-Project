@@ -26,7 +26,7 @@ exit
 ! ----------------------------------------------------
 ! Switchports: Trunk Uplink to SW-D-DMME
 ! ----------------------------------------------------
-interface fastEthernet 0/1
+interface GigabitEthernet 0/1
  description TRUNK_TO_SW-D-DMME
  switchport trunk encapsulation dot1q
  switchport mode trunk
@@ -37,14 +37,14 @@ interface fastEthernet 0/1
 ! ----------------------------------------------------
 ! Switchports: Access Ports (PCs)
 ! ----------------------------------------------------
-interface fastEthernet 0/2
+interface GigabitEthernet 0/2
  description PC-PT_PC4
  switchport mode access
  switchport access vlan 30
  spanning-tree portfast
  no shutdown
 
-interface fastEthernet 0/3
+interface GigabitEthernet 0/3
  description PC-PT_PC5
  switchport mode access
  switchport access vlan 30

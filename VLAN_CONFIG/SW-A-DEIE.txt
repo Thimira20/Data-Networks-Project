@@ -46,14 +46,14 @@ exit
 ! ----------------------------------------------------
 ! Switchports: Access Ports (PCs)
 ! ----------------------------------------------------
-interface fastEthernet 0/1
+interface GigabitEthernet 0/1
  description PC-PT_PC0
  switchport mode access
  switchport access vlan 10
  spanning-tree portfast
  no shutdown
 
-interface fastEthernet 0/2
+interface GigabitEthernet 0/2
  description PC-PT_PC1
  switchport mode access
  switchport access vlan 10
@@ -63,7 +63,7 @@ interface fastEthernet 0/2
 ! ----------------------------------------------------
 ! Switchports: Trunk Uplink to SW-D-DEIE
 ! ----------------------------------------------------
-interface fastEthernet 0/3
+interface GigabitEthernet 0/3
  description TRUNK_TO_SW-D-DEIE
  switchport trunk encapsulation dot1q
  switchport mode trunk

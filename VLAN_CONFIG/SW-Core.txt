@@ -32,7 +32,7 @@ spanning-tree vlan 1-100 root primary
 ! ----------------------------------------------------
 ! Switchports: Trunk Uplinks to Distribution Switches
 ! ----------------------------------------------------
-interface fastEthernet 0/1
+interface GigabitEthernet 0/1
  description TRUNK_TO_SW-D-DCEE
  switchport trunk encapsulation dot1q
  switchport mode trunk
@@ -40,7 +40,7 @@ interface fastEthernet 0/1
  switchport trunk allowed vlan 10,20,30,40,99,100
  no shutdown
 
-interface fastEthernet 0/2
+interface GigabitEthernet 0/2
  description TRUNK_TO_SW-D-DEIE
  switchport trunk encapsulation dot1q
  switchport mode trunk
@@ -48,7 +48,7 @@ interface fastEthernet 0/2
  switchport trunk allowed vlan 10,20,30,40,99,100
  no shutdown
 
-interface fastEthernet 0/3
+interface GigabitEthernet 0/3
  description TRUNK_TO_SW-D-DMME
  switchport trunk encapsulation dot1q
  switchport mode trunk
@@ -56,7 +56,7 @@ interface fastEthernet 0/3
  switchport trunk allowed vlan 10,20,30,40,99,100
  no shutdown
 
-interface fastEthernet 0/4
+interface GigabitEthernet 0/4
  description TRUNK_TO_SW-D-DIS
  switchport trunk encapsulation dot1q
  switchport mode trunk
