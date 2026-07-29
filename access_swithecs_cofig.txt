@@ -1,5 +1,5 @@
 configure terminal
- interface range fastEthernet 0/1 - 2
+ interface range GigabitEthernet 0/0 - 2
   switchport mode access          
   switchport access vlan 10       
   spanning-tree portfast          
@@ -8,7 +8,7 @@ write memory
 
 
 configure terminal
- interface range fastEthernet 0/1 - 2
+ interface range GigabitEthernet 0/1 - 2
   switchport mode access          
   switchport access vlan 20       
   spanning-tree portfast          
@@ -18,7 +18,7 @@ write memory
 
 
 configure terminal
- interface range fastEthernet 0/2 - 3
+ interface range GigabitEthernet 0/1 - 2
   switchport mode access          
   switchport access vlan 30       
   spanning-tree portfast          
@@ -27,11 +27,23 @@ write memory
 
 
 configure terminal
- interface range fastEthernet 0/2 - 3
+ interface range GigabitEthernet 0/0 - 1
   switchport mode access          
   switchport access vlan 40       
   spanning-tree portfast          
 end
 
 write memory
-    
+
+
+
+
+
+
+
+configure terminal
+ interface range GigabitEthernet 0/1
+  no switchport access vlan
+  no spanning-tree portfast
+  switchport mode dynamic auto
+end

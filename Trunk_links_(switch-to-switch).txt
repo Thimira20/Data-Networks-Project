@@ -1,5 +1,5 @@
 configure terminal
- interface fastEthernet 0/3
+ interface GigabitEthernet 0/3
   switchport trunk encapsulation dot1q   
   switchport mode trunk                  
   switchport trunk native vlan 100       
@@ -10,7 +10,7 @@ write memory
 
 
 configure terminal
- interface fastEthernet 0/1
+ interface GigabitEthernet 0/1
   switchport trunk encapsulation dot1q   
   switchport mode trunk                  
   switchport trunk native vlan 100       
@@ -21,7 +21,7 @@ write memory
 
 
 configure terminal
- interface fastEthernet 0/2
+ interface GigabitEthernet 0/2
   switchport trunk encapsulation dot1q   
   switchport mode trunk                  
   switchport trunk native vlan 100       
@@ -32,7 +32,7 @@ write memory
 
 
 configure terminal
- interface fastEthernet 0/4
+ interface GigabitEthernet 0/4
   switchport trunk encapsulation dot1q   
   switchport mode trunk                  
   switchport trunk native vlan 100       
@@ -40,3 +40,21 @@ end
 
 write memory
 
+configure terminal
+ interface GigabitEthernet 0/0
+  switchport trunk encapsulation dot1q   
+  switchport mode trunk                  
+  switchport trunk native vlan 100       
+end
+
+write memory
+
+
+configure terminal
+ interface GigabitEthernet 1/0
+  switchport trunk encapsulation dot1q   
+  switchport mode trunk                  
+  switchport trunk native vlan 100       
+end
+
+write memory

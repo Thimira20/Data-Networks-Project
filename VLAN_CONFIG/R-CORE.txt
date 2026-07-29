@@ -29,13 +29,13 @@ snmp-server enable traps
 ! ----------------------------------------------------
 ! Interfaces Configuration
 ! ----------------------------------------------------
-interface gigabitEthernet 0/0/0
+interface FastEthernet 0/0
  description LINK_TO_SW-CORE
  ip address 10.0.0.2 255.255.255.252
  no shutdown
 exit
 
-interface gigabitEthernet 0/0/1
+interface FastEthernet 0/0
  description LINK_TO_R-EDGE
  ip address 10.0.1.1 255.255.255.252
  no shutdown
