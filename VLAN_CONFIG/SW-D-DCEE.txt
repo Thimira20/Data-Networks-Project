@@ -26,7 +26,7 @@ exit
 ! ----------------------------------------------------
 ! Switchports: Trunk Uplinks & Downlinks
 ! ----------------------------------------------------
-interface fastEthernet 0/1
+interface GigabitEthernet 0/1
  description TRUNK_TO_SW-A-DCEE
  switchport trunk encapsulation dot1q
  switchport mode trunk
@@ -34,7 +34,7 @@ interface fastEthernet 0/1
  switchport trunk allowed vlan 10,20,30,40,99,100
  no shutdown
 
-interface fastEthernet 0/2
+interface GigabitEthernet 0/2
  description TRUNK_TO_SW-CORE
  switchport trunk encapsulation dot1q
  switchport mode trunk

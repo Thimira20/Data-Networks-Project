@@ -33,7 +33,7 @@ interface fastEthernet 0/1
  spanning-tree portfast
  no shutdown
 
-interface fastEthernet 0/2
+interface fastEthernet 0/3
  description PC-PT_PC6
  switchport mode access
  switchport access vlan 20
