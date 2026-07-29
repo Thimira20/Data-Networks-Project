@@ -9,16 +9,16 @@
 
 ### What Changes
 
-| Aspect | Before (L2) | After (L3) |
-|---|---|---|
-| Uplink to SW-Core | Trunk (switchport) | **Routed port** (`no switchport`) with /30 IP |
-| Downlink to Access SW | Trunk (switchport) | Trunk (switchport) — **unchanged** |
-| `ip routing` | ❌ Not enabled | ✅ Enabled |
-| SVIs for department VLANs | ❌ None (only VLAN 99 for mgmt) | ✅ SVI with gateway IP for its own department VLAN |
-| `ip default-gateway` | ✅ Used (L2 behaviour) | ❌ **Removed** (L3 uses routing table instead) |
-| OSPF | ❌ Not running | ✅ OSPF process 1, area 0 |
-| MGMT VLAN 99 SVI | Has IP (mgmt only) | Keeps IP — now also advertised in OSPF |
-| Inter-VLAN routing | All done by SW-Core | Each dist switch **routes its own VLAN locally** — traffic only goes to SW-Core for cross-department or WAN |
+| Aspect                    | Before (L2)                     | After (L3)                                                                                                  |
+| ------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Uplink to SW-Core         | Trunk (switchport)              | **Routed port** (`no switchport`) with /30 IP                                                               |
+| Downlink to Access SW     | Trunk (switchport)              | Trunk (switchport) — **unchanged**                                                                          |
+| `ip routing`              | ❌ Not enabled                  | ✅ Enabled                                                                                                  |
+| SVIs for department VLANs | ❌ None (only VLAN 99 for mgmt) | ✅ SVI with gateway IP for its own department VLAN                                                          |
+| `ip default-gateway`      | ✅ Used (L2 behaviour)          | ❌ **Removed** (L3 uses routing table instead)                                                              |
+| OSPF                      | ❌ Not running                  | ✅ OSPF process 1, area 0                                                                                   |
+| MGMT VLAN 99 SVI          | Has IP (mgmt only)              | Keeps IP — now also advertised in OSPF                                                                      |
+| Inter-VLAN routing        | All done by SW-Core             | Each dist switch **routes its own VLAN locally** — traffic only goes to SW-Core for cross-department or WAN |
 
 ### What Stays the Same
 
@@ -37,11 +37,11 @@
 
 The trunk links between SW-Core and each distribution switch are **converted to routed point-to-point links**. Each link gets a dedicated /30 subnet.
 
-| Link | Subnet | SW-Core IP | Distribution SW IP | SW-Core Interface | Dist SW Interface |
-|---|---|---|---|---|---|
-| SW-Core ↔ SW-D-DEIE | 10.0.10.0/30 | 10.0.10.1 | 10.0.10.2 | Gi0/2 | Gi0/2 |
-| SW-Core ↔ SW-D-DCEE | 10.0.20.0/30 | 10.0.20.1 | 10.0.20.2 | Gi0/1 | Gi0/2 |
-| SW-Core ↔ SW-D-DMME | 10.0.30.0/30 | 10.0.30.1 | 10.0.30.2 | Gi0/3 | Gi0/0 |
+| Link                | Subnet       | SW-Core IP | Distribution SW IP | SW-Core Interface | Dist SW Interface |
+| ------------------- | ------------ | ---------- | ------------------ | ----------------- | ----------------- |
+| SW-Core ↔ SW-D-DEIE | 10.0.10.0/30 | 10.0.10.1  | 10.0.10.2          | Gi0/2             | Gi0/2             |
+| SW-Core ↔ SW-D-DCEE | 10.0.20.0/30 | 10.0.20.1  | 10.0.20.2          | Gi0/1             | Gi0/2             |
+| SW-Core ↔ SW-D-DMME | 10.0.30.0/30 | 10.0.30.1  | 10.0.30.2          | Gi0/3             | Gi0/0             |
 
 > [!NOTE]
 > The existing SW-Core Gi0/4 trunk to SW-D-DIS is **removed** (no SW-D-DIS in the design). SW-A-DIS connects directly to SW-Core via a **trunk** link (unchanged).
@@ -50,22 +50,22 @@ The trunk links between SW-Core and each distribution switch are **converted to 
 
 Each distribution switch now hosts the SVI gateway for **its own department VLAN only**. SW-Core **no longer** holds those per-department SVIs.
 
-| VLAN | Name | Subnet | Old Gateway (SW-Core) | **New Gateway (Dist SW)** |
-|---|---|---|---|---|
-| 10 | VLAN_DEIE | 10.10.10.0/24 | 10.10.10.1 | **10.10.10.1 on SW-D-DEIE** |
-| 20 | VLAN_DCEE | 10.10.20.0/24 | 10.10.20.1 | **10.10.20.1 on SW-D-DCEE** |
-| 30 | VLAN_DMME | 10.10.30.0/24 | 10.10.30.1 | **10.10.30.1 on SW-D-DMME** |
-| 40 | VLAN_DIS | 10.10.40.0/24 | 10.10.40.1 | **10.10.40.1 on SW-Core** (unchanged — no dist switch for DIS) |
-| 99 | MGMT | 10.99.99.0/24 | 10.99.99.1 | **10.99.99.1 on SW-Core** (unchanged — MGMT backbone stays on core) |
+| VLAN | Name      | Subnet        | Old Gateway (SW-Core) | **New Gateway (Dist SW)**                                           |
+| ---- | --------- | ------------- | --------------------- | ------------------------------------------------------------------- |
+| 10   | VLAN_DEIE | 10.10.10.0/24 | 10.10.10.1            | **10.10.10.1 on SW-D-DEIE**                                         |
+| 20   | VLAN_DCEE | 10.10.20.0/24 | 10.10.20.1            | **10.10.20.1 on SW-D-DCEE**                                         |
+| 30   | VLAN_DMME | 10.10.30.0/24 | 10.10.30.1            | **10.10.30.1 on SW-D-DMME**                                         |
+| 40   | VLAN_DIS  | 10.10.40.0/24 | 10.10.40.1            | **10.10.40.1 on SW-Core** (unchanged — no dist switch for DIS)      |
+| 99   | MGMT      | 10.99.99.0/24 | 10.99.99.1            | **10.99.99.1 on SW-Core** (unchanged — MGMT backbone stays on core) |
 
 > [!IMPORTANT]
 > **PC default gateways do NOT change!** The IPs stay the same (e.g. 10.10.10.1), they just now live on the distribution switch instead of SW-Core. PCs don't need reconfiguration.
 
 ### 2.3 MGMT VLAN 99 IPs — Unchanged
 
-| Device | MGMT IP |
-|---|---|
-| SW-Core | 10.99.99.1 |
+| Device    | MGMT IP     |
+| --------- | ----------- |
+| SW-Core   | 10.99.99.1  |
 | SW-D-DEIE | 10.99.99.11 |
 | SW-D-DCEE | 10.99.99.12 |
 | SW-D-DMME | 10.99.99.13 |
@@ -99,7 +99,7 @@ ip routing
 ! ============================================================
 ! STEP 3: Convert uplink to SW-Core from trunk → routed port
 ! ============================================================
-interface GigabitEthernet 0/2
+interface GigabitEthernet 0/0
  description ROUTED_LINK_TO_SW-CORE
  no switchport trunk encapsulation dot1q
  no switchport trunk native vlan 100
@@ -112,7 +112,7 @@ exit
 
 ! ============================================================
 ! STEP 4: Downlink to access switch — STAYS as trunk (no change)
-! GigabitEthernet 0/1 — trunk to SW-A-DEIE (already configured)
+! GigabitEthernet 0/2 — trunk to SW-A-DEIE (already configured)
 ! ============================================================
 
 ! ============================================================
@@ -142,7 +142,7 @@ router ospf 1
  network 10.10.10.0 0.0.0.255 area 0
  network 10.99.99.0 0.0.0.255 area 0
  passive-interface default
- no passive-interface GigabitEthernet 0/2
+ no passive-interface GigabitEthernet 0/0
 exit
 
 end
@@ -183,7 +183,7 @@ exit
 
 ! ============================================================
 ! STEP 4: Downlink to access switch — STAYS as trunk (no change)
-! GigabitEthernet 0/1 — trunk to SW-A-DCEE (already configured)
+! GigabitEthernet 0/0 — trunk to SW-A-DCEE (already configured)
 ! ============================================================
 
 ! ============================================================
@@ -241,7 +241,7 @@ ip routing
 ! ============================================================
 ! STEP 3: Convert uplink to SW-Core from trunk → routed port
 ! ============================================================
-interface GigabitEthernet 0/0
+interface GigabitEthernet 0/3
  description ROUTED_LINK_TO_SW-CORE
  no switchport trunk encapsulation dot1q
  no switchport trunk native vlan 100
@@ -254,7 +254,7 @@ exit
 
 ! ============================================================
 ! STEP 4: Downlink to access switch — STAYS as trunk (no change)
-! GigabitEthernet 0/2 — trunk to SW-A-DMME (already configured)
+! GigabitEthernet 0/0 — trunk to SW-A-DMME (already configured)
 ! ============================================================
 
 ! ============================================================
@@ -284,7 +284,7 @@ router ospf 1
  network 10.10.30.0 0.0.0.255 area 0
  network 10.99.99.0 0.0.0.255 area 0
  passive-interface default
- no passive-interface GigabitEthernet 0/0
+ no passive-interface GigabitEthernet 0/3
 exit
 
 end
@@ -296,6 +296,7 @@ write memory
 ### 3.4 SW-Core — Update to Match New Design
 
 SW-Core needs to:
+
 1. **Remove** the old trunk links to distribution switches (replace with routed ports)
 2. **Remove** the SVIs for VLANs 10, 20, 30 (those gateways now live on dist switches)
 3. **Keep** SVIs for VLAN 40 (DIS — no dist switch) and VLAN 99 (MGMT)
@@ -311,8 +312,8 @@ configure terminal
 !         (these become routed ports)
 ! ============================================================
 
-! --- Gi0/1 was trunk to SW-D-DCEE ---
-interface GigabitEthernet 0/1
+! --- Gi0/2 was trunk to SW-D-DCEE ---
+interface GigabitEthernet 0/2
  description ROUTED_LINK_TO_SW-D-DCEE
  no switchport trunk encapsulation dot1q
  no switchport trunk native vlan 100
@@ -323,8 +324,8 @@ interface GigabitEthernet 0/1
  no shutdown
 exit
 
-! --- Gi0/2 was trunk to SW-D-DEIE ---
-interface GigabitEthernet 0/2
+! --- Gi0/0 was trunk to SW-D-DEIE ---
+interface GigabitEthernet 0/0
  description ROUTED_LINK_TO_SW-D-DEIE
  no switchport trunk encapsulation dot1q
  no switchport trunk native vlan 100
@@ -345,12 +346,6 @@ interface GigabitEthernet 0/3
  no switchport
  ip address 10.0.30.1 255.255.255.252
  no shutdown
-exit
-
-! --- Gi0/4 was trunk to SW-D-DIS (REMOVED — no SW-D-DIS exists) ---
-interface GigabitEthernet 0/4
- shutdown
- description UNUSED
 exit
 
 ! ============================================================
@@ -396,7 +391,7 @@ router ospf 1
  ! Only form adjacencies on routed links
  passive-interface default
  no passive-interface GigabitEthernet 0/0
- no passive-interface GigabitEthernet 0/1
+ no passive-interface GigabitEthernet 1/0
  no passive-interface GigabitEthernet 0/2
  no passive-interface GigabitEthernet 0/3
 exit
@@ -464,9 +459,9 @@ VLAN10               │   VLAN20           │  VLAN30          VLAN40
 
 ## 5. OSPF Adjacency Summary (After Conversion)
 
-| Adjacency | Subnet | Device A (IP) | Device B (IP) |
-|---|---|---|---|
-| SW-Core ↔ R-CORE | 10.0.0.0/30 | SW-Core (10.0.0.1) | R-CORE (10.0.0.2) |
+| Adjacency           | Subnet       | Device A (IP)       | Device B (IP)         |
+| ------------------- | ------------ | ------------------- | --------------------- |
+| SW-Core ↔ R-CORE    | 10.0.0.0/30  | SW-Core (10.0.0.1)  | R-CORE (10.0.0.2)     |
 | SW-Core ↔ SW-D-DEIE | 10.0.10.0/30 | SW-Core (10.0.10.1) | SW-D-DEIE (10.0.10.2) |
 | SW-Core ↔ SW-D-DCEE | 10.0.20.0/30 | SW-Core (10.0.20.1) | SW-D-DCEE (10.0.20.2) |
 | SW-Core ↔ SW-D-DMME | 10.0.30.0/30 | SW-Core (10.0.30.1) | SW-D-DMME (10.0.30.2) |
@@ -480,16 +475,21 @@ VLAN10               │   VLAN20           │  VLAN30          VLAN40
 ### 6.1 On Each Distribution Switch (SW-D-DEIE / DCEE / DMME)
 
 #### Check `ip routing` is enabled
+
 ```
 show ip route
 ```
+
 **Expected:** A full routing table with `C` (connected) and `O` (OSPF) routes — NOT the "Default gateway is X" message you see on L2 switches.
 
 #### Check routed uplink is up
+
 ```
 show ip interface brief
 ```
+
 **Expected:**
+
 ```
 Interface              IP-Address      OK? Method Status                Protocol
 GigabitEthernet0/2     10.0.10.2       YES manual up                    up       ← routed link
@@ -498,20 +498,26 @@ Vlan99                 10.99.99.11     YES manual up                    up      
 ```
 
 #### Check OSPF neighbour
+
 ```
 show ip ospf neighbor
 ```
+
 **Expected:** One neighbour (SW-Core) in **FULL** state:
+
 ```
 Neighbor ID     Pri   State       Dead Time   Address         Interface
 1.1.1.1           1   FULL/...    00:00:3x    10.0.10.1       GigabitEthernet0/2
 ```
 
 #### Check OSPF routes learned
+
 ```
 show ip route ospf
 ```
+
 **Expected:** Routes to other departments' subnets learned via OSPF:
+
 ```
 O    10.10.20.0/24 [110/x] via 10.0.10.1, GigabitEthernet0/2
 O    10.10.30.0/24 [110/x] via 10.0.10.1, GigabitEthernet0/2
@@ -520,15 +526,19 @@ O    10.0.0.0/30   [110/x] via 10.0.10.1, GigabitEthernet0/2
 ```
 
 #### Check the trunk downlink to access switch is still working
+
 ```
 show interfaces trunk
 ```
+
 **Expected:** Gi0/1 (or whichever port faces the access switch) is listed as trunk, carrying VLANs 10, 99, etc.
 
 #### Check `ip default-gateway` is REMOVED
+
 ```
 show running-config | include default-gateway
 ```
+
 **Expected:** No output (empty). If it still shows `ip default-gateway`, it must be removed — it interferes with L3 routing.
 
 ---
@@ -536,10 +546,13 @@ show running-config | include default-gateway
 ### 6.2 On SW-Core
 
 #### Check OSPF neighbours (should be 4)
+
 ```
 show ip ospf neighbor
 ```
+
 **Expected:**
+
 ```
 Neighbor ID     Pri   State       Dead Time   Address         Interface
 2.2.2.2           1   FULL/...    00:00:3x    10.0.0.2        Gi0/0      ← R-CORE
@@ -549,10 +562,13 @@ Neighbor ID     Pri   State       Dead Time   Address         Interface
 ```
 
 #### Check routing table
+
 ```
 show ip route
 ```
+
 **Expected:** Mix of `C` (connected) for local /30 links + VLAN 40/99, and `O` (OSPF) for the department subnets now owned by dist switches:
+
 ```
 C    10.0.0.0/30    is directly connected, GigabitEthernet0/0
 C    10.0.10.0/30   is directly connected, GigabitEthernet0/2
@@ -566,9 +582,11 @@ O    10.10.30.0/24  [110/x] via 10.0.30.2, GigabitEthernet0/3
 ```
 
 #### Verify removed SVIs are gone
+
 ```
 show ip interface brief | include Vlan
 ```
+
 **Expected:** Only Vlan40 and Vlan99 remain. Vlan10, Vlan20, Vlan30 should NOT appear.
 
 ---
@@ -577,16 +595,16 @@ show ip interface brief | include Vlan
 
 Run these from a **DEIE PC** (10.10.10.10):
 
-| Test | Destination | Command | Expected |
-|---|---|---|---|
-| 1. Own gateway | 10.10.10.1 (SW-D-DEIE SVI) | `ping 10.10.10.1` | ✅ Success |
-| 2. Dist switch uplink | 10.0.10.2 (SW-D-DEIE routed) | `ping 10.0.10.2` | ✅ Success |
-| 3. SW-Core p2p | 10.0.10.1 (SW-Core side) | `ping 10.0.10.1` | ✅ Success |
-| 4. Inter-VLAN: DCEE PC | 10.10.20.10 | `ping 10.10.20.10` | ✅ Success (routed via OSPF) |
-| 5. Inter-VLAN: DMME PC | 10.10.30.10 | `ping 10.10.30.10` | ✅ Success |
-| 6. Inter-VLAN: DIS PC | 10.10.40.10 | `ping 10.10.40.10` | ✅ Success |
-| 7. R-CORE | 10.0.0.2 | `ping 10.0.0.2` | ✅ Success |
-| 8. MGMT switch | 10.99.99.12 (SW-D-DCEE) | `ping 10.99.99.12` | ✅ Success |
+| Test                   | Destination                  | Command            | Expected                     |
+| ---------------------- | ---------------------------- | ------------------ | ---------------------------- |
+| 1. Own gateway         | 10.10.10.1 (SW-D-DEIE SVI)   | `ping 10.10.10.1`  | ✅ Success                   |
+| 2. Dist switch uplink  | 10.0.10.2 (SW-D-DEIE routed) | `ping 10.0.10.2`   | ✅ Success                   |
+| 3. SW-Core p2p         | 10.0.10.1 (SW-Core side)     | `ping 10.0.10.1`   | ✅ Success                   |
+| 4. Inter-VLAN: DCEE PC | 10.10.20.10                  | `ping 10.10.20.10` | ✅ Success (routed via OSPF) |
+| 5. Inter-VLAN: DMME PC | 10.10.30.10                  | `ping 10.10.30.10` | ✅ Success                   |
+| 6. Inter-VLAN: DIS PC  | 10.10.40.10                  | `ping 10.10.40.10` | ✅ Success                   |
+| 7. R-CORE              | 10.0.0.2                     | `ping 10.0.0.2`    | ✅ Success                   |
+| 8. MGMT switch         | 10.99.99.12 (SW-D-DCEE)      | `ping 10.99.99.12` | ✅ Success                   |
 
 > [!TIP]
 > Run `traceroute 10.10.20.10` from a DEIE PC to verify the path goes:
@@ -667,14 +685,14 @@ Then restore the corresponding SW-Core trunk interface and SVIs as they were bef
 
 ## 9. Troubleshooting Checklist
 
-| Symptom | Likely Cause | Fix |
-|---|---|---|
-| `show ip route` shows "Default gateway is X" instead of routing table | `ip routing` not enabled | `configure terminal` → `ip routing` |
-| OSPF neighbour stuck at INIT / never appears | Routed port not up, or `passive-interface default` blocking the link | Check `show ip interface brief` for up/up; ensure `no passive-interface GiX/Y` is set for the correct port |
-| SVI shows `up/down` | VLAN has no active ports, or VLAN not created | Check `show vlan brief` — VLAN must exist AND have at least one active port (trunk counts) |
-| Ping from PC fails to other VLAN | OSPF routes not learned, or old `ip default-gateway` still present | Check `show ip route ospf` for routes; check `show run | include default-gateway` to ensure it's removed |
-| `ip default-gateway` and `ip routing` both present | Conflict — `ip default-gateway` is ignored when `ip routing` is on, but causes confusion | Remove with `no ip default-gateway` |
-| MGMT SSH from Admin PC to dist switch fails | VLAN 99 not carried on trunk downlink after uplink became routed | VLAN 99 traffic still needs to flow on the access-side trunk; verify `show interfaces trunk` on dist→access link |
+| Symptom                                                               | Likely Cause                                                                             | Fix                                                                                                              |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `show ip route` shows "Default gateway is X" instead of routing table | `ip routing` not enabled                                                                 | `configure terminal` → `ip routing`                                                                              |
+| OSPF neighbour stuck at INIT / never appears                          | Routed port not up, or `passive-interface default` blocking the link                     | Check `show ip interface brief` for up/up; ensure `no passive-interface GiX/Y` is set for the correct port       |
+| SVI shows `up/down`                                                   | VLAN has no active ports, or VLAN not created                                            | Check `show vlan brief` — VLAN must exist AND have at least one active port (trunk counts)                       |
+| Ping from PC fails to other VLAN                                      | OSPF routes not learned, or old `ip default-gateway` still present                       | Check `show ip route ospf` for routes; check `show run                                                           | include default-gateway` to ensure it's removed |
+| `ip default-gateway` and `ip routing` both present                    | Conflict — `ip default-gateway` is ignored when `ip routing` is on, but causes confusion | Remove with `no ip default-gateway`                                                                              |
+| MGMT SSH from Admin PC to dist switch fails                           | VLAN 99 not carried on trunk downlink after uplink became routed                         | VLAN 99 traffic still needs to flow on the access-side trunk; verify `show interfaces trunk` on dist→access link |
 
 ---
 
