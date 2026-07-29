@@ -32,8 +32,7 @@ spanning-tree vlan 1-100 root primary
 ! ----------------------------------------------------
 ! Switchports: Trunk Uplinks to Distribution Switches
 ! ----------------------------------------------------
-interface GigabitEthernet 0/1
- description TRUNK_TO_SW-D-DCEE
+interface GigabitEthernet 0/0
  switchport trunk encapsulation dot1q
  switchport mode trunk
  switchport trunk native vlan 100
@@ -41,7 +40,6 @@ interface GigabitEthernet 0/1
  no shutdown
 
 interface GigabitEthernet 0/2
- description TRUNK_TO_SW-D-DEIE
  switchport trunk encapsulation dot1q
  switchport mode trunk
  switchport trunk native vlan 100
@@ -49,15 +47,20 @@ interface GigabitEthernet 0/2
  no shutdown
 
 interface GigabitEthernet 0/3
- description TRUNK_TO_SW-D-DMME
  switchport trunk encapsulation dot1q
  switchport mode trunk
  switchport trunk native vlan 100
  switchport trunk allowed vlan 10,20,30,40,99,100
  no shutdown
 
-interface GigabitEthernet 0/4
- description TRUNK_TO_SW-D-DIS
+interface GigabitEthernet 0/1
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 100
+ switchport trunk allowed vlan 10,20,30,40,99,100
+ no shutdown
+
+interface GigabitEthernet 1/0
  switchport trunk encapsulation dot1q
  switchport mode trunk
  switchport trunk native vlan 100
@@ -67,7 +70,7 @@ interface GigabitEthernet 0/4
 ! ----------------------------------------------------
 ! Routed Link to R-CORE
 ! ----------------------------------------------------
-interface gigabitEthernet 0/1
+interface GigabitEthernet 0/1
  description LINK_TO_R-CORE
  no switchport
  ip address 10.0.0.1 255.255.255.252
@@ -184,7 +187,7 @@ router ospf 1
  network 10.10.40.0 0.0.0.255 area 0
  network 10.99.99.0 0.0.0.255 area 0
  passive-interface default
- no passive-interface gigabitEthernet 0/1
+ no passive-interface GigabitEthernet 0/1
 exit
 
 end
