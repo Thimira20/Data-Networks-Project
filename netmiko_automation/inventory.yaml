@@ -115,6 +115,10 @@ l2_switches:
     host: "10.99.99.23"
     device_type: "cisco_ios"
 
+  - hostname: "SW-D-DIS"
+    host: "10.99.99.14"
+    device_type: "cisco_ios"
+
   - hostname: "SW-A-DIS"
     host: "10.99.99.24"
     device_type: "cisco_ios"

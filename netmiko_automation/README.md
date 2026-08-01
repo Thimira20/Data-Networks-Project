@@ -1,29 +1,31 @@
-# Netmiko Network Automation — Setup & Usage Guide
+# Complete Guide: Network Automation with Netmiko on GNS3
 
-## EE8203/EC8205 — Section 4.1: Netmiko Python Automation (Routers)
+## EE8203/EC8205 — Section 4.1: Netmiko Python Automation
+
+> This guide covers **every step** from zero to running the automation scripts.
+> Nothing is assumed. Follow each phase in order.
 
 ---
 
 ## Table of Contents
 
-1. [What This Automation Does (And Doesn't Do)](#1-what-this-automation-does)
-2. [File Structure](#2-file-structure)
-3. [Step 0 — Connect the Docker Ubuntu Container to GNS3](#step-0)
-4. [Step 1 — Install Dependencies Inside the Container](#step-1)
-5. [Step 2 — Copy Scripts into the Container](#step-2)
-6. [Step 3 — Verify SSH Connectivity](#step-3)
-7. [Step 4 — Run the Scripts](#step-4)
-8. [Expected Outputs](#5-expected-outputs)
-9. [How to Demonstrate Idempotency](#6-idempotency-demo)
-10. [Troubleshooting](#7-troubleshooting)
+- [Phase 0 — Understand What We're Doing](#phase-0)
+- [Phase 1 — Enable SSH on ALL Network Devices](#phase-1)
+- [Phase 2 — Fix VLAN 99 Management Connectivity](#phase-2)
+- [Phase 3 — Setup Docker Ubuntu Controller in GNS3](#phase-3)
+- [Phase 4 — Install Python & Libraries on Ubuntu](#phase-4)
+- [Phase 5 — Deploy & Run Automation Scripts](#phase-5)
+- [Phase 6 — Demonstrate Idempotency for Report](#phase-6)
+- [Troubleshooting](#troubleshooting)
+- [File Structure](#file-structure)
 
 ---
 
-## 1. What This Automation Does (And Doesn't Do) <a name="1-what-this-automation-does"></a>
+## Phase 0 — Understand What We're Doing <a name="phase-0"></a>
 
-Your GNS3 network is **already configured manually**. These scripts automate the
-**same configuration** via Python + Netmiko SSH, proving you can manage network
-devices programmatically instead of typing CLI commands one by one.
+Your GNS3 network is **already configured manually**. The automation scripts
+**re-apply the same configuration via SSH**, proving you can manage devices
+programmatically.
 
 | If the device is...         | Script behaviour                                  | What this proves            |
 | --------------------------- | ------------------------------------------------- | --------------------------- |
@@ -594,18 +596,367 @@ write memory
 
 ---
 
-## 4. Step 1 — Install Dependencies Inside the Docker Container <a name="step-1"></a>
+### 1.5 Verify SSH on ALL Devices — Checklist
 
-Inside the Docker Ubuntu console:
+Run `show ip ssh` on every device from its GNS3 console:
+
+| Device | Console Command | Expected Output |
+|---|---|---|
+| R-CORE | `show ip ssh` | SSH Enabled - version 2.0 |
+| R-EDGE | `show ip ssh` | SSH Enabled - version 2.0 |
+| SW-Core | `show ip ssh` | SSH Enabled - version 2.0 |
+| SW-D-DEIE | `show ip ssh` | SSH Enabled - version 2.0 |
+| SW-D-DCEE | `show ip ssh` | SSH Enabled - version 2.0 |
+| SW-D-DMME | `show ip ssh` | SSH Enabled - version 2.0 |
+| SW-D-DIS | `show ip ssh` | SSH Enabled - version 2.0 |
+| SW-A-DEIE | `show ip ssh` | SSH Enabled - version 2.0 |
+| SW-A-DCEE | `show ip ssh` | SSH Enabled - version 2.0 |
+| SW-A-DMME | `show ip ssh` | SSH Enabled - version 2.0 |
+| SW-A-DIS | `show ip ssh` | SSH Enabled - version 2.0 |
+
+> **If `show ip ssh` returns "SSH has not been enabled":** The `crypto key generate rsa`
+> command probably wasn't accepted. Check that both `hostname` and `ip domain-name`
+> are set FIRST, then re-run `crypto key generate rsa general-keys modulus 1024`.
+
+> **If your IOSvL2 image doesn't support SSH at all** (no `crypto` command available):
+> Use telnet instead. Change `transport input ssh` to `transport input telnet` and
+> update `device_type` in inventory.yaml from `cisco_ios` to `cisco_ios_telnet`.
+
+---
+
+## Phase 2 — Fix VLAN 99 Management Connectivity <a name="phase-2"></a>
+
+> **WHY:** After the L3 distribution switch conversion, VLAN 99 is split into 4
+> separate L2 islands. The Docker controller can only reach SW-Core directly.
+> Distribution and access switches need routing fixes. Also, the ACL blocks ICMP
+> to routers (ping fails, but SSH works).
+
+### 2.1 Update ACL-MGMT-IN on SW-Core
+
+Your current ACL permits SSH to routers but blocks ICMP (ping). Also need SSH
+permits for the distribution switch point-to-point links.
+
+**On SW-Core console:**
+
+```
+enable
+configure terminal
+
+! Remove the old ACL and rebuild with complete rules
+no ip access-list extended ACL-MGMT-IN
+
+ip access-list extended ACL-MGMT-IN
+ remark ---- SSH management access ----
+ permit tcp 10.99.99.0 0.0.0.255 10.99.99.0 0.0.0.255 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.0.0 0.0.0.255 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.1.0 0.0.0.255 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.10.0 0.0.0.3 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.20.0 0.0.0.3 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.30.0 0.0.0.3 eq 22
+ remark ---- SNMP monitoring ----
+ permit udp 10.99.99.0 0.0.0.255 host 10.10.40.100 eq 162
+ permit udp 10.99.99.0 0.0.0.255 host 10.10.40.100 eq 161
+ remark ---- ICMP for troubleshooting ----
+ permit icmp 10.99.99.0 0.0.0.255 host 10.10.40.100
+ permit icmp 10.99.99.0 0.0.0.255 10.99.99.0 0.0.0.255
+ permit icmp 10.99.99.0 0.0.0.255 10.0.0.0 0.0.0.3
+ permit icmp 10.99.99.0 0.0.0.255 10.0.1.0 0.0.0.3
+ permit icmp 10.99.99.0 0.0.0.255 10.0.10.0 0.0.0.3
+ permit icmp 10.99.99.0 0.0.0.255 10.0.20.0 0.0.0.3
+ permit icmp 10.99.99.0 0.0.0.255 10.0.30.0 0.0.0.3
+ remark ---- Block MGMT from reaching user VLANs ----
+ deny ip 10.99.99.0 0.0.0.255 10.10.10.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 10.10.20.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 10.10.30.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 10.10.40.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 any
+exit
+
+end
+write memory
+```
+
+### 2.2 Add Static /32 Host Routes on SW-Core
+
+These override the connected /24 route, forcing MGMT traffic to distribution
+switch islands through the routed links.
+
+**On SW-Core console:**
+
+```
+enable
+configure terminal
+
+! Route to SW-D-DEIE island (SW-D-DEIE + SW-A-DEIE)
+ip route 10.99.99.11 255.255.255.255 10.0.10.2
+ip route 10.99.99.21 255.255.255.255 10.0.10.2
+
+! Route to SW-D-DCEE island (SW-D-DCEE + SW-A-DCEE)
+ip route 10.99.99.12 255.255.255.255 10.0.20.2
+ip route 10.99.99.22 255.255.255.255 10.0.20.2
+
+! Route to SW-D-DMME island (SW-D-DMME + SW-A-DMME)
+ip route 10.99.99.13 255.255.255.255 10.0.30.2
+ip route 10.99.99.23 255.255.255.255 10.0.30.2
+
+end
+write memory
+```
+
+### 2.3 Add Return Routes on Distribution Switches
+
+Each distribution switch needs a route back to the Docker container.
+
+**On SW-D-DEIE console:**
+```
+enable
+configure terminal
+ip route 10.99.99.100 255.255.255.255 10.0.10.1
+end
+write memory
+```
+
+**On SW-D-DCEE console:**
+```
+enable
+configure terminal
+ip route 10.99.99.100 255.255.255.255 10.0.20.1
+end
+write memory
+```
+
+**On SW-D-DMME console:**
+```
+enable
+configure terminal
+ip route 10.99.99.100 255.255.255.255 10.0.30.1
+end
+write memory
+```
+
+### 2.4 Update Access Switch Default Gateways
+
+After L3 conversion, access switches behind distribution switches can no longer
+reach SW-Core (10.99.99.1) directly on VLAN 99. Change their default gateway to
+their local distribution switch.
+
+**On SW-A-DEIE console:**
+```
+enable
+configure terminal
+no ip default-gateway 10.99.99.1
+ip default-gateway 10.99.99.11
+end
+write memory
+```
+
+**On SW-A-DCEE console:**
+```
+enable
+configure terminal
+no ip default-gateway 10.99.99.1
+ip default-gateway 10.99.99.12
+end
+write memory
+```
+
+**On SW-A-DMME console:**
+```
+enable
+configure terminal
+no ip default-gateway 10.99.99.1
+ip default-gateway 10.99.99.13
+end
+write memory
+```
+
+> **SW-A-DIS — NO CHANGE** — it connects directly to SW-Core via trunk,
+> so its default-gateway 10.99.99.1 still works.
+
+---
+
+## Phase 3 — Setup Docker Ubuntu Controller in GNS3 <a name="phase-3"></a>
+
+### 3.1 Add the Docker Container Node
+
+1. In GNS3: **Edit → Preferences → Docker containers → New**
+2. Image: `gns3/ubuntu:noble` (pull from Docker Hub if not available)
+3. Name: `Automation-Controller`
+4. Adapters: **2** (eth0 for MGMT, eth1 for Internet/package downloads)
+5. Start command: `/bin/bash`
+6. Click **Apply → OK**
+7. Drag the new node onto your GNS3 workspace
+
+### 3.2 Connect to GNS3 Topology
+
+Draw **two cables** from the Docker container:
+
+```
+                    ┌──────────────────┐
+          eth0 ─────│  Docker Ubuntu   │───── eth1
+            │       │ Automation-Ctrl  │        │
+            │       └──────────────────┘        │
+            │                                   │
+     SW-Core (any free port)              GNS3 NAT Node
+     e.g. GigabitEthernet1/0              (for internet)
+```
+
+**Cable 1 — eth0 → SW-Core:**
+- Connect Docker's `eth0` to any unused port on SW-Core (e.g., Gi1/0 or Gi3/3)
+- If no ports are free: right-click SW-Core in GNS3 → **Configure** → increase adapter count
+
+**Cable 2 — eth1 → GNS3 NAT node:**
+- Add a **NAT** node: right-click workspace → Add node → search "NAT"
+- Connect Docker's `eth1` to the NAT node
+- This gives the container internet access for downloading packages
+
+### 3.3 Configure SW-Core Port for Docker (VLAN 99 Access)
+
+**On SW-Core console** — configure the port where Docker is connected:
+
+```
+enable
+configure terminal
+interface GigabitEthernet1/0
+ description AUTOMATION_CONTROLLER_DOCKER
+ switchport access vlan 99
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+exit
+end
+write memory
+```
+
+> Change `GigabitEthernet1/0` to match the actual port you connected the cable to.
+
+### 3.4 Start and Configure the Docker Container
+
+Start the Docker container (right-click → Start), then open its console.
+
+#### Configure eth0 (Management VLAN 99)
 
 ```bash
-# Update package list
+# Set static IP on management interface
+ip addr add 10.99.99.100/24 dev eth0
+ip link set eth0 up
+```
+
+#### Configure eth1 (Internet via NAT node)
+
+```bash
+# Get internet access via DHCP on the NAT interface
+dhclient eth1 2>/dev/null || (ip link set eth1 up && udhcpc -i eth1 2>/dev/null)
+```
+
+> If `dhclient` isn't available, try: `ip addr add 192.168.122.100/24 dev eth1 && ip route add default via 192.168.122.1`
+> (GNS3 NAT node default subnet is 192.168.122.0/24, gateway 192.168.122.1)
+
+#### Set default route for management (important!)
+
+```bash
+# Remove any existing default route
+ip route del default 2>/dev/null
+
+# Default route via NAT node (for internet/package downloads)
+ip route add default via 192.168.122.1
+
+# Add specific routes for campus network (via VLAN 99 gateway)
+ip route add 10.0.0.0/8 via 10.99.99.1
+```
+
+#### Configure DNS
+
+```bash
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+```
+
+#### Test connectivity
+
+```bash
+# Test management network
+ping -c 2 10.99.99.1       # SW-Core (must work)
+
+# Test internet (for package downloads)
+ping -c 2 8.8.8.8          # Google DNS (must work via NAT node)
+```
+
+### 3.5 Make Network Configuration Persistent
+
+GNS3 Docker container filesystems **are persistent** within the project
+(changes survive stop/start). But network config set with `ip addr` is
+**in-memory only** — lost on container restart. Fix this with a startup script:
+
+```bash
+# Create the persistent startup script
+cat > /root/startup.sh << 'SCRIPT'
+#!/bin/bash
+# ============================================
+# Network Automation Controller — Startup Script
+# This runs every time the container starts
+# ============================================
+
+echo "[*] Configuring network interfaces..."
+
+# eth0: Management VLAN 99
+ip addr flush dev eth0
+ip addr add 10.99.99.100/24 dev eth0
+ip link set eth0 up
+
+# eth1: Internet via GNS3 NAT node
+ip link set eth1 up
+# Try DHCP first, fall back to static
+dhclient eth1 2>/dev/null || ip addr add 192.168.122.100/24 dev eth1
+
+# Routing
+ip route del default 2>/dev/null
+ip route add default via 192.168.122.1      # Internet via NAT
+ip route add 10.0.0.0/8 via 10.99.99.1      # Campus via SW-Core
+
+# DNS
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+
+echo "[*] Network ready."
+echo "    Management: 10.99.99.100 (eth0)"
+echo "    Internet:   via NAT node (eth1)"
+SCRIPT
+
+chmod +x /root/startup.sh
+```
+
+**Make it run automatically on every login:**
+
+```bash
+# Add to .bashrc so it runs when you open the console
+echo '' >> /root/.bashrc
+echo '# Auto-configure network on login' >> /root/.bashrc
+echo 'if [ ! -f /tmp/.network_configured ]; then' >> /root/.bashrc
+echo '    /root/startup.sh' >> /root/.bashrc
+echo '    touch /tmp/.network_configured' >> /root/.bashrc
+echo 'fi' >> /root/.bashrc
+```
+
+> The `/tmp/.network_configured` flag prevents the script from running multiple times
+> if you open multiple terminal tabs. It resets on container restart (since /tmp is volatile).
+
+**Test persistence:** Stop the container → Start it again → Open console →
+network should auto-configure.
+
+---
+
+## Phase 4 — Install Python & Libraries <a name="phase-4"></a>
+
+Inside the Docker container console:
+
+```bash
+# Update package manager
 apt update
 
-# Install Python3, pip, and SSH client
-apt install -y python3 python3-pip openssh-client nano
+# Install Python3, pip, SSH client, and text editor
+apt install -y python3 python3-pip openssh-client iputils-ping nano
 
-# Install the required Python libraries
+# Install Netmiko and YAML parser
 pip3 install netmiko pyyaml --break-system-packages
 ```
 
@@ -613,8 +964,8 @@ pip3 install netmiko pyyaml --break-system-packages
 > virtual environment by default. This flag overrides it. Alternatively:
 >
 > ```bash
-> python3 -m venv /root/netmiko_env
-> source /root/netmiko_env/bin/activate
+> python3 -m venv /root/venv
+> source /root/venv/bin/activate
 > pip install netmiko pyyaml
 > # Add 'source /root/venv/bin/activate' to /root/.bashrc for persistence
 > ```
@@ -643,50 +994,41 @@ PyYAML OK
 ### 5.1 Create Script Directory
 
 ```bash
-mkdir -p /root/netmiko_automation
+mkdir -p /root/netmiko_automation/logs
 cd /root/netmiko_automation
-nano inventory.yaml        # Paste the YAML content, save with Ctrl+O, exit Ctrl+X
+```
+
+### 5.2 Copy Scripts into the Container
+
+**Option A — Type/paste each file manually:**
+
+```bash
+nano inventory.yaml           # Paste content, Ctrl+O to save, Ctrl+X to exit
 nano 01_configure_routers.py
 nano 02_configure_snmp_all.py
 nano 03_verify_config.py
 ```
 
-### Option B: Git Clone (If You've Pushed to GitHub)
+**Option B — Use SCP from your Windows PC** (if you can reach the Docker IP):
+
+If your Windows PC can reach the Docker container:
+
+```powershell
+scp "d:\8th sem\DAta Networks\Project\netmiko_automation\*" root@10.99.99.100:/root/netmiko_automation/
+```
+
+**Option C — Clone from GitHub:**
 
 ```bash
 apt install -y git
 cd /root
 git clone https://github.com/YOUR_USERNAME/Data-Networks-Project.git
-cd Data-Networks-Project/netmiko_automation
+cp -r Data-Networks-Project/netmiko_automation/* /root/netmiko_automation/
 ```
 
-### Option C: SCP from Host PC
+### 5.3 Verify SSH Connectivity to ALL Devices
 
-If your Windows PC can reach the Docker container:
-
-```powershell
-scp -r "d:\8th sem\DAta Networks\Project\netmiko_automation\*" root@10.99.99.100:/root/netmiko_automation/
-```
-
----
-
-## 6. Step 3 — Verify SSH Connectivity Before Running Scripts <a name="step-3"></a>
-
-Test SSH access from the Docker container to each device type:
-
-```bash
-# Test SSH to SW-Core (direct VLAN 99)
-ssh admin@10.99.99.1
-
-# Test SSH to R-CORE (routed)
-ssh admin@10.0.0.2
-
-# Test SSH to R-EDGE (routed via R-CORE)
-ssh admin@10.0.1.2
-
-# Test SSH to an access switch
-ssh admin@10.99.99.21
-```
+**Before running any script**, test SSH from the Docker container to every device:
 
 For each test, you should see:
 
@@ -695,7 +1037,8 @@ Password: admin123
 R-CORE#
 ```
 
-Type `exit` to disconnect after each test.
+For each test: enter password `admin123`, you should see the device prompt
+(e.g., `R-CORE#`). Type `exit` to disconnect.
 
 > **If SSH fails with "Unable to negotiate" or "no matching key exchange":**
 > The c7200 may use older SSH algorithms. Add this to the SSH command:
@@ -707,28 +1050,31 @@ Type `exit` to disconnect after each test.
 > If this is the issue, uncomment the `disabled_algorithms` line in each script's
 > `build_connection_params()` function.
 
----
+> **If SSH fails with "Connection refused"**: SSH is not enabled on that device.
+> Go back to Phase 1 and configure SSH on that device.
 
-## 7. Step 4 — Run the Scripts <a name="step-4"></a>
+> **If SSH fails with "No route to host"**: Routing issue. Go back to Phase 2
+> and verify the static routes are in place.
 
-Run in this order:
+### 5.4 Run the Scripts (In Order)
 
 ```bash
 cd /root/netmiko_automation
 
-# Script 1: Configure R-CORE and R-EDGE (interfaces, OSPF, NAT, ACLs)
+# Script 1: Configure R-CORE and R-EDGE
+# (interfaces, OSPF, NAT overload, router ACLs)
 python3 01_configure_routers.py
 
-# Script 2: Push SNMP to ALL devices (routers + switches)
+# Script 2: Push SNMP to ALL 10 devices
+# (community strings, trap destination)
 python3 02_configure_snmp_all.py
 
-# Script 3: Verify everything
+# Script 3: Verify all configuration
+# (runs show commands on every device)
 python3 03_verify_config.py
 ```
 
-Each script creates a timestamped log file in the `logs/` directory.
-
----
+### 5.5 Check Log Files
 
 ## 8. Expected Outputs <a name="5-expected-outputs"></a>
 
@@ -786,40 +1132,63 @@ Each script creates a timestamped log file in the `logs/` directory.
 
 ---
 
-## 9. How to Demonstrate Idempotency (For Report) <a name="6-idempotency-demo"></a>
+## Phase 6 — Demonstrate Idempotency for Report <a name="phase-6"></a>
 
-1. **First run** — scripts apply config (or skip if already present)
-2. **Second run** — scripts detect everything is already configured, skip everything
-3. **Show both log files side-by-side** in your report
+### Step 1: Show "Already Configured" (Idempotent Run)
+
+Run the scripts on your already-configured network:
 
 To demonstrate fresh deployment:
 
 ```bash
-# In GNS3, open R-EDGE console and factory reset:
+python3 01_configure_routers.py
+# Expected: "SKIPPING (idempotent)" for everything
+```
+
+**Screenshot this output** — it proves re-running doesn't create duplicates.
+
+### Step 2: Reset One Router and Re-Deploy
+
+```
+! In GNS3, open R-EDGE console:
 R-EDGE# write erase
 R-EDGE# reload
+! Wait for reload...
 
-# Wait for R-EDGE to boot, then re-enable SSH manually:
-# (The script can't connect without SSH being pre-configured)
-R-EDGE> enable
-R-EDGE# configure terminal
-R-EDGE(config)# hostname R-EDGE
-R-EDGE(config)# username admin privilege 15 secret admin123
+! Re-enable SSH (minimum needed for Netmiko to connect):
+Router> enable
+Router# configure terminal
+Router(config)# hostname R-EDGE
 R-EDGE(config)# ip domain-name campus.uor.lk
+R-EDGE(config)# username admin privilege 15 secret admin123
 R-EDGE(config)# crypto key generate rsa general-keys modulus 1024
+R-EDGE(config)# ip ssh version 2
 R-EDGE(config)# line vty 0 4
 R-EDGE(config-line)# transport input ssh
 R-EDGE(config-line)# login local
-R-EDGE(config-line)# end
+R-EDGE(config-line)# exit
+R-EDGE(config)# interface GigabitEthernet0/0
+R-EDGE(config-if)# ip address 10.0.1.2 255.255.255.252
+R-EDGE(config-if)# no shutdown
+R-EDGE(config-if)# end
 R-EDGE# write memory
-
-# Now run the script — it will configure R-EDGE from scratch:
-python3 01_configure_routers.py
 ```
+
+> You need the interface IP and SSH configured manually so Netmiko can reach
+> and authenticate to the device. The script will then push the rest.
+
+Now run the script again:
+
+```bash
+python3 01_configure_routers.py
+# Expected: R-CORE shows "SKIPPING", R-EDGE shows actual config being pushed
+```
+
+**Screenshot this output** — it proves the script can deploy from scratch.
 
 ---
 
-## 10. Troubleshooting <a name="7-troubleshooting"></a>
+## Troubleshooting <a name="troubleshooting"></a>
 
 | Problem                              | Cause                                    | Fix                                                                              |
 | ------------------------------------ | ---------------------------------------- | -------------------------------------------------------------------------------- |
