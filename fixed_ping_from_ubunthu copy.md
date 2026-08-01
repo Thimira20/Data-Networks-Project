@@ -2,12 +2,12 @@
 
 ## Your Test Results
 
-| Destination | IP | Result | Root Cause |
-|---|---|---|---|
-| SW-Core | 10.99.99.1 | ✅ Works | Same L2 VLAN 99 segment — direct delivery |
-| SW-D-DEIE | 10.99.99.11 | ❌ Unreachable | **VLAN 99 L2 split** — different L2 island after L3 conversion |
-| R-CORE | 10.0.0.2 | ❌ Filtered | **ACL blocks ICMP** — only SSH (TCP 22) is permitted |
-| R-EDGE | 10.0.1.2 | ❌ Filtered | **ACL blocks ICMP** — only SSH (TCP 22) is permitted |
+| Destination | IP          | Result         | Root Cause                                                     |
+| ----------- | ----------- | -------------- | -------------------------------------------------------------- |
+| SW-Core     | 10.99.99.1  | ✅ Works       | Same L2 VLAN 99 segment — direct delivery                      |
+| SW-D-DEIE   | 10.99.99.11 | ❌ Unreachable | **VLAN 99 L2 split** — different L2 island after L3 conversion |
+| R-CORE      | 10.0.0.2    | ❌ Filtered    | **ACL blocks ICMP** — only SSH (TCP 22) is permitted           |
+| R-EDGE      | 10.0.1.2    | ❌ Filtered    | **ACL blocks ICMP** — only SSH (TCP 22) is permitted           |
 
 There are **two separate problems**. Let me explain each.
 
@@ -30,6 +30,7 @@ deny ip 10.99.99.0 0.0.0.255 any                             ← EVERYTHING ELSE
 ```
 
 When Docker (10.99.99.100) pings R-CORE (10.0.0.2):
+
 - **ICMP** packet enters VLAN 99 SVI → hits `ACL-MGMT-IN`
 - No rule permits ICMP to `10.0.0.0/30` → falls through to `deny ip any` → **BLOCKED**
 - The device sends back ICMP "administratively prohibited" → shows as **"filtered"**
@@ -42,6 +43,7 @@ When Docker (10.99.99.100) pings R-CORE (10.0.0.2):
 Add ICMP permit rules to `ACL-MGMT-IN` for the router link subnets.
 
 **On SW-Core:**
+
 ```
 enable
 configure terminal
@@ -73,6 +75,7 @@ This is the more serious problem. It's a **side effect of the L3 distribution sw
 ### Why It Happens
 
 **Before L3 conversion** — VLAN 99 was one big L2 domain:
+
 ```
 Docker ──(VLAN 99)── SW-Core ──(trunk)── SW-D-DEIE ──(trunk)── SW-A-DEIE
                      10.99.99.1            10.99.99.11            10.99.99.21
@@ -81,6 +84,7 @@ Docker ──(VLAN 99)── SW-Core ──(trunk)── SW-D-DEIE ──(trunk)
 ```
 
 **After L3 conversion** — the trunks became routed links, splitting VLAN 99:
+
 ```
        ISLAND 1 (L2)                    ISLAND 2 (L2)
 ┌─────────────────────┐          ┌─────────────────────┐
@@ -95,14 +99,15 @@ Docker ──(VLAN 99)── SW-Core ──(trunk)── SW-D-DEIE ──(trunk)
 
 There are now **4 separate L2 islands** all using `10.99.99.0/24`:
 
-| Island | Devices | VLAN 99 IPs |
-|---|---|---|
-| 1: SW-Core | SW-Core, SW-A-DIS, Docker | .1, .24, .100 |
-| 2: SW-D-DEIE | SW-D-DEIE, SW-A-DEIE | .11, .21 |
-| 3: SW-D-DCEE | SW-D-DCEE, SW-A-DCEE | .12, .22 |
-| 4: SW-D-DMME | SW-D-DMME, SW-A-DMME | .13, .23 |
+| Island       | Devices                   | VLAN 99 IPs   |
+| ------------ | ------------------------- | ------------- |
+| 1: SW-Core   | SW-Core, SW-A-DIS, Docker | .1, .24, .100 |
+| 2: SW-D-DEIE | SW-D-DEIE, SW-A-DEIE      | .11, .21      |
+| 3: SW-D-DCEE | SW-D-DCEE, SW-A-DCEE      | .12, .22      |
+| 4: SW-D-DMME | SW-D-DMME, SW-A-DMME      | .13, .23      |
 
 When Docker pings 10.99.99.11:
+
 1. Docker sees 10.99.99.11 is in the **same subnet** (10.99.99.0/24) → sends ARP request "who has 10.99.99.11?"
 2. ARP broadcast only reaches Island 1 (SW-Core's local VLAN 99 segment)
 3. SW-D-DEIE is on Island 2 → **ARP never reaches it** → "Destination unreachable"
@@ -114,6 +119,7 @@ Even if Docker sends to its gateway (10.99.99.1), SW-Core also has 10.99.99.0/24
 The fix is elegant: add **/32 host routes** on SW-Core pointing to each distribution switch's routed port IP. A /32 route is more specific than the /24 connected route, so it wins the routing lookup.
 
 **On SW-Core:**
+
 ```
 enable
 configure terminal
@@ -132,6 +138,7 @@ write memory
 ```
 
 **How it works now:**
+
 ```
 Docker pings 10.99.99.11:
   1. Docker → gateway 10.99.99.1 (SW-Core)
@@ -249,14 +256,20 @@ ip route 10.99.99.100 255.255.255.255 10.0.30.1
 ### 3. On Access Switches (change default-gateway)
 
 ```
+enable
+configure terminal
 ! SW-A-DEIE:
 no ip default-gateway 10.99.99.1
 ip default-gateway 10.99.99.11
 
+enable
+configure terminal
 ! SW-A-DCEE:
 no ip default-gateway 10.99.99.1
 ip default-gateway 10.99.99.12
 
+enable
+configure terminal
 ! SW-A-DMME:
 no ip default-gateway 10.99.99.1
 ip default-gateway 10.99.99.13
@@ -269,6 +282,7 @@ ip default-gateway 10.99.99.13
 ## Verification After Applying Fixes
 
 From the Docker container:
+
 ```bash
 # These should ALL succeed now:
 ping -c 3 10.99.99.1      # SW-Core (was working)
@@ -284,9 +298,11 @@ ping -c 3 10.0.1.2        # R-EDGE (was filtered — fixed by ACL)
 ```
 
 Verify the static routes on SW-Core:
+
 ```
 show ip route static
 ```
+
 Expected: six `/32` routes pointing to distribution switches.
 
 ---
@@ -338,6 +354,7 @@ write memory
 ## Why Your 4×4 Reachability Matrix Still Works
 
 The 4×4 matrix tests traffic between department VLANs (10, 20, 30, 40) — these use:
+
 - Department SVIs on distribution switches (10.10.10.1, 10.10.20.1, etc.)
 - Routed point-to-point links between SW-Core and distribution switches
 - OSPF routing

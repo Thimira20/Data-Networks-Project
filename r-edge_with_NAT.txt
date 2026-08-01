@@ -1,0 +1,27 @@
+enable
+configure terminal
+
+! Interface connected to GNS3 NAT Cloud
+interface FastEthernet1/0
+ ip address dhcp
+ ip nat outside
+ no shutdown
+ exit
+
+! Interface connected to internal network (R-CORE)
+interface FastEthernet0/0
+ ip nat inside
+ exit
+
+! Permit Management VLAN 99 and Data subnets to be NATed
+access-list 100 permit ip 10.99.99.0 0.0.0.255 any
+access-list 100 permit ip 10.10.10.0 0.0.0.255 any
+access-list 100 permit ip 10.10.20.0 0.0.0.255 any
+
+! Enable NAT overload (PAT)
+ip nat inside source list 100 interface FastEthernet1/0 overload
+
+! Default route to Internet
+ip route 0.0.0.0 0.0.0.0 FastEthernet1/0
+end
+write memory
