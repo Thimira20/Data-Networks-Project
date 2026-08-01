@@ -25,10 +25,10 @@ Your GNS3 network is **already configured manually**. These scripts automate the
 **same configuration** via Python + Netmiko SSH, proving you can manage network
 devices programmatically instead of typing CLI commands one by one.
 
-| If the device is...                         | Script behaviour                                          | What this proves                              |
-| ------------------------------------------- | --------------------------------------------------------- | --------------------------------------------- |
-| **Already configured** (your current state) | Detects existing config → reports "SKIPPING (idempotent)" | Script is safe to re-run; no duplicate config |
-| **Factory default / reset**                 | Pushes full configuration from scratch                    | Script actually works for deployment          |
+| If the device is...         | Script behaviour                                  | What this proves            |
+| --------------------------- | ------------------------------------------------- | --------------------------- |
+| **Already configured**      | Detects existing config → "SKIPPING (idempotent)" | Safe to re-run              |
+| **Factory default / reset** | Pushes full config from scratch                   | Script works for deployment |
 
 **For your report, demonstrate BOTH scenarios:**
 
@@ -37,77 +37,531 @@ devices programmatically instead of typing CLI commands one by one.
 
 ---
 
-## 2. File Structure <a name="2-file-structure"></a>
+## Phase 1 — Enable SSH on ALL Network Devices <a name="phase-1"></a>
+
+> **WHY:** Netmiko connects to devices via SSH. Without SSH enabled, the scripts
+> cannot connect. This is the chicken-and-egg step — you must configure SSH
+> **manually via GNS3 console** before automation can begin.
+>
+> **Reference:** This follows the same procedure as the workshop guide
+> "Enabling SSH on Cisco IOS Switches" section.
+
+### What SSH Needs (4 things)
+
+Every Cisco IOS device requires these to accept SSH connections:
+
+1. **Hostname** — must be set (not the default `Switch` or `Router`)
+2. **Domain name** — needed to generate RSA key pair (hostname + domain = key label)
+3. **RSA key pair** — the encryption key for SSH
+4. **VTY lines** — configured for SSH + local authentication
+
+### 1.1 Routers (R-CORE, R-EDGE) — Already Done ✅
+
+Your router configs already include SSH setup. **Verify** by opening each router's
+GNS3 console and running:
 
 ```
-netmiko_automation/
-├── inventory.yaml              ← Device inventory (IPs, credentials, config params)
-├── 01_configure_routers.py     ← Automates R-CORE + R-EDGE (interfaces, OSPF, NAT, ACLs)
-├── 02_configure_snmp_all.py    ← Pushes SNMPv2c to ALL 10 devices
-├── 03_verify_config.py         ← Runs show commands and reports results
-├── README.md                   ← This file
-└── logs/                       ← Auto-created: timestamped log files
-    ├── router_config_2026-07-31_16-30-00.log
-    ├── snmp_config_2026-07-31_16-35-00.log
-    └── verification_2026-07-31_16-40-00.log
+show ip ssh
+```
+
+**Expected:** `SSH Enabled - version 2.0` (or 1.99). If you see this, skip to
+Phase 1.2.
+
+**If SSH is NOT enabled**, paste this into each router's console:
+
+```
+enable
+configure terminal
+
+! ── SSH Prerequisites ──
+hostname R-CORE
+ip domain-name campus.uor.lk
+
+! ── Create local user for SSH login ──
+username admin privilege 15 secret admin123
+
+! ── Generate RSA key pair (MUST come AFTER hostname + domain-name) ──
+crypto key generate rsa general-keys modulus 2048
+
+! ── Enable SSH version 2 ──
+ip ssh version 2
+
+! ── Configure VTY lines to accept SSH only ──
+line vty 0 4
+ transport input ssh
+ login local
+exit
+
+end
+write memory
+```
+
+Repeat for R-EDGE (change hostname to `R-EDGE`).
+
+```
+enable
+configure terminal
+
+! ── SSH Prerequisites ──
+hostname R-EDGE
+ip domain-name campus.uor.lk
+
+! ── Create local user for SSH login ──
+username admin privilege 15 secret admin123
+
+! ── Generate RSA key pair (MUST come AFTER hostname + domain-name) ──
+crypto key generate rsa general-keys modulus 2048
+
+! ── Enable SSH version 2 ──
+ip ssh version 2
+
+! ── Configure VTY lines to accept SSH only ──
+line vty 0 4
+ transport input ssh
+ login local
+exit
+
+end
+write memory
 ```
 
 ---
 
-## 3. Step 0 — Connect the Docker Ubuntu Container to GNS3 <a name="step-0"></a>
+### 1.2 SW-Core — Configure SSH
 
-The Docker container (`gns3/ubuntu:noble`) is your **automation controller node**.
-It must be connected to the VLAN 99 management network to reach all devices via SSH.
-
-### Where to Connect
-
-Connect the Docker container to **SW-Core** on any available port, configured as a
-**VLAN 99 access port**.
+Open SW-Core's GNS3 console and paste:
 
 ```
-              [ SW-CORE ]
-             /  |  |  \   \
-          Gi0/0 ... Gi0/3  Gi1/0  ← Connect Docker here
-            ↓              ↓
-         R-CORE     🐧 Docker Ubuntu
-                    IP: 10.99.99.100/24
-                    GW: 10.99.99.1
+enable
+configure terminal
+
+! ── SSH Configuration ──
+! hostname SW-Core                    ← already set, skip if prompt shows SW-Core
+ip domain-name campus.uor.lk
+username admin privilege 15 secret admin123
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+
+line vty 0 15
+ transport input ssh
+ login local
+exit
+
+end
+write memory
 ```
 
-### Step-by-Step in GNS3
+> **Note:** Switches use `line vty 0 15` (16 VTY lines) instead of `0 4` (5 lines).
+> Both work, but 0 15 allows more simultaneous SSH sessions.
 
-1. **Add the Docker container** to your GNS3 topology:
-   - Right-click the workspace → **Add a node** → **End Devices** → **ubuntu-noble**
-   - (If it's not listed, go to **Edit → Preferences → Docker containers** and add
-     the image `gns3/ubuntu:noble`)
+**Verify:**
 
-2. **Connect it to SW-Core**:
-   - Draw a cable from the Docker container's `eth0` to an **unused port** on SW-Core
-     (e.g., `GigabitEthernet1/0` or any free port).
-   - If SW-Core doesn't have free ports, right-click SW-Core → **Configure** → increase
-     the **Adapters** count, then reconnect.
+```
+show ip ssh
+```
 
-3. **Configure the SW-Core port as VLAN 99 access**:
+Expected: `SSH Enabled - version 2.0`
 
-   ```
-   enable
-   configure terminal
-   interface GigabitEthernet1/1
-    description AUTOMATION_CONTROLLER
-    switchport access vlan 99
-    switchport mode access
-    spanning-tree portfast
-    no shutdown
-   exit
-   end
-   write memory
-   ```
+```
+show running-config | include username
+```
 
-   > **Note:** If SW-Core's uplink ports are routed (`no switchport`), other ports
-   > can still be regular switchports. The switch supports both modes simultaneously.
+Expected: `username admin privilege 15 secret ...`
 
-   > **Note:** If your IOSvL2 doesn't accept `switchport access vlan 99`, check that
-   > VLAN 99 exists first (`show vlan brief`). If not, create it: `vlan 99` → `name MGMT`.
+---
+
+### 1.3 Distribution Switches — Configure SSH
+
+These switches are **missing SSH** in your current config. Open each one's GNS3
+console and paste the commands below.
+
+#### SW-D-DEIE
+
+```
+enable
+configure terminal
+ip domain-name campus.uor.lk
+username admin privilege 15 secret admin123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+line vty 0 15
+ transport input ssh
+ login local
+exit
+end
+write memory
+```
+
+#### SW-D-DCEE
+
+```
+enable
+configure terminal
+ip domain-name campus.uor.lk
+username admin privilege 15 secret admin123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+line vty 0 15
+ transport input ssh
+ login local
+exit
+end
+write memory
+```
+
+#### SW-D-DMME
+
+```
+enable
+configure terminal
+ip domain-name campus.uor.lk
+username admin privilege 15 secret admin123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+line vty 0 15
+ transport input ssh
+ login local
+exit
+end
+write memory
+```
+
+#### SW-D-DIS
+
+```
+enable
+configure terminal
+ip domain-name campus.uor.lk
+username admin privilege 15 secret admin123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+line vty 0 15
+ transport input ssh
+ login local
+exit
+end
+write memory
+```
+
+---
+
+### 1.4 Access Switches — Configure SSH
+
+SW-A-DEIE already has SSH ✅. The others need it.
+
+```
+enable
+configure terminal
+ip domain-name campus.uor.lk
+username admin privilege 15 secret admin123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+line vty 0 15
+ transport input ssh
+ login local
+exit
+end
+write memory
+```
+
+#### SW-A-DCEE
+
+```
+enable
+configure terminal
+ip domain-name campus.uor.lk
+username admin privilege 15 secret admin123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+line vty 0 15
+ transport input ssh
+ login local
+exit
+end
+write memory
+```
+
+#### SW-A-DMME
+
+```
+enable
+configure terminal
+ip domain-name campus.uor.lk
+username admin privilege 15 secret admin123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+line vty 0 15
+ transport input ssh
+ login local
+exit
+end
+write memory
+```
+
+#### SW-A-DIS
+
+```
+enable
+configure terminal
+ip domain-name campus.uor.lk
+username admin privilege 15 secret admin123
+crypto key generate rsa general-keys modulus 2048
+ip ssh version 2
+line vty 0 15
+ transport input ssh
+ login local
+exit
+end
+write memory
+```
+
+---
+
+### 1.5 Verify SSH on ALL Devices — Checklist
+
+Run `show ip ssh` on every device from its GNS3 console:
+
+| Device    | Console Command | Expected Output           |
+| --------- | --------------- | ------------------------- |
+| R-CORE    | `show ip ssh`   | SSH Enabled - version 2.0 |
+| R-EDGE    | `show ip ssh`   | SSH Enabled - version 2.0 |
+| SW-Core   | `show ip ssh`   | SSH Enabled - version 2.0 |
+| SW-D-DEIE | `show ip ssh`   | SSH Enabled - version 2.0 |
+| SW-D-DCEE | `show ip ssh`   | SSH Enabled - version 2.0 |
+| SW-D-DMME | `show ip ssh`   | SSH Enabled - version 2.0 |
+| SW-D-DIS  | `show ip ssh`   | SSH Enabled - version 2.0 |
+| SW-A-DEIE | `show ip ssh`   | SSH Enabled - version 2.0 |
+| SW-A-DCEE | `show ip ssh`   | SSH Enabled - version 2.0 |
+| SW-A-DMME | `show ip ssh`   | SSH Enabled - version 2.0 |
+| SW-A-DIS  | `show ip ssh`   | SSH Enabled - version 2.0 |
+
+> **If `show ip ssh` returns "SSH has not been enabled":** The `crypto key generate rsa`
+> command probably wasn't accepted. Check that both `hostname` and `ip domain-name`
+> are set FIRST, then re-run `crypto key generate rsa general-keys modulus 1024`.
+
+> **If your IOSvL2 image doesn't support SSH at all** (no `crypto` command available):
+> Use telnet instead. Change `transport input ssh` to `transport input telnet` and
+> update `device_type` in inventory.yaml from `cisco_ios` to `cisco_ios_telnet`.
+
+---
+
+## Phase 2 — Fix VLAN 99 Management Connectivity <a name="phase-2"></a>
+
+> **WHY:** After the L3 distribution switch conversion, VLAN 99 is split into 4
+> separate L2 islands. The Docker controller can only reach SW-Core directly.
+> Distribution and access switches need routing fixes. Also, the ACL blocks ICMP
+> to routers (ping fails, but SSH works).
+
+### 2.1 Update ACL-MGMT-IN on SW-Core
+
+Your current ACL permits SSH to routers but blocks ICMP (ping). Also need SSH
+permits for the distribution switch point-to-point links.
+
+**On SW-Core console:**
+
+```
+enable
+configure terminal
+
+! Remove the old ACL and rebuild with complete rules
+no ip access-list extended ACL-MGMT-IN
+
+ip access-list extended ACL-MGMT-IN
+ remark ---- SSH management access ----
+ permit tcp 10.99.99.0 0.0.0.255 10.99.99.0 0.0.0.255 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.0.0 0.0.0.255 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.1.0 0.0.0.255 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.10.0 0.0.0.3 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.20.0 0.0.0.3 eq 22
+ permit tcp 10.99.99.0 0.0.0.255 10.0.30.0 0.0.0.3 eq 22
+ remark ---- SNMP monitoring ----
+ permit udp 10.99.99.0 0.0.0.255 host 10.10.40.100 eq 162
+ permit udp 10.99.99.0 0.0.0.255 host 10.10.40.100 eq 161
+ remark ---- ICMP for troubleshooting ----
+ permit icmp 10.99.99.0 0.0.0.255 host 10.10.40.100
+ permit icmp 10.99.99.0 0.0.0.255 10.99.99.0 0.0.0.255
+ permit icmp 10.99.99.0 0.0.0.255 10.0.0.0 0.0.0.3
+ permit icmp 10.99.99.0 0.0.0.255 10.0.1.0 0.0.0.3
+ permit icmp 10.99.99.0 0.0.0.255 10.0.10.0 0.0.0.3
+ permit icmp 10.99.99.0 0.0.0.255 10.0.20.0 0.0.0.3
+ permit icmp 10.99.99.0 0.0.0.255 10.0.30.0 0.0.0.3
+ remark ---- Block MGMT from reaching user VLANs ----
+ deny ip 10.99.99.0 0.0.0.255 10.10.10.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 10.10.20.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 10.10.30.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 10.10.40.0 0.0.0.255
+ deny ip 10.99.99.0 0.0.0.255 any
+exit
+
+end
+write memory
+```
+
+### 2.2 Add Static /32 Host Routes on SW-Core
+
+These override the connected /24 route, forcing MGMT traffic to distribution
+switch islands through the routed links.
+
+**On SW-Core console:**
+
+```
+enable
+configure terminal
+
+! Route to SW-D-DEIE island (SW-D-DEIE + SW-A-DEIE)
+ip route 10.99.99.11 255.255.255.255 10.0.10.2
+ip route 10.99.99.21 255.255.255.255 10.0.10.2
+
+! Route to SW-D-DCEE island (SW-D-DCEE + SW-A-DCEE)
+ip route 10.99.99.12 255.255.255.255 10.0.20.2
+ip route 10.99.99.22 255.255.255.255 10.0.20.2
+
+! Route to SW-D-DMME island (SW-D-DMME + SW-A-DMME)
+ip route 10.99.99.13 255.255.255.255 10.0.30.2
+ip route 10.99.99.23 255.255.255.255 10.0.30.2
+
+end
+write memory
+```
+
+### 2.3 Add Return Routes on Distribution Switches
+
+Each distribution switch needs a route back to the Docker container.
+
+**On SW-D-DEIE console:**
+
+```
+enable
+configure terminal
+ip route 10.99.99.100 255.255.255.255 10.0.10.1
+end
+write memory
+```
+
+**On SW-D-DCEE console:**
+
+```
+enable
+configure terminal
+ip route 10.99.99.100 255.255.255.255 10.0.20.1
+end
+write memory
+```
+
+**On SW-D-DMME console:**
+
+```
+enable
+configure terminal
+ip route 10.99.99.100 255.255.255.255 10.0.30.1
+end
+write memory
+```
+
+### 2.4 Update Access Switch Default Gateways
+
+After L3 conversion, access switches behind distribution switches can no longer
+reach SW-Core (10.99.99.1) directly on VLAN 99. Change their default gateway to
+their local distribution switch.
+
+**On SW-A-DEIE console:**
+
+```
+enable
+configure terminal
+no ip default-gateway 10.99.99.1
+ip default-gateway 10.99.99.11
+end
+write memory
+```
+
+**On SW-A-DCEE console:**
+
+```
+enable
+configure terminal
+no ip default-gateway 10.99.99.1
+ip default-gateway 10.99.99.12
+end
+write memory
+```
+
+**On SW-A-DMME console:**
+
+```
+enable
+configure terminal
+no ip default-gateway 10.99.99.1
+ip default-gateway 10.99.99.13
+end
+write memory
+```
+
+> **SW-A-DIS — NO CHANGE** — it connects directly to SW-Core via trunk,
+> so its default-gateway 10.99.99.1 still works.
+
+---
+
+## Phase 3 — Setup Docker Ubuntu Controller in GNS3 <a name="phase-3"></a>
+
+### 3.1 Add the Docker Container Node
+
+1. In GNS3: **Edit → Preferences → Docker containers → New**
+2. Image: `gns3/ubuntu:noble` (pull from Docker Hub if not available)
+3. Name: `Automation-Controller`
+4. Adapters: **2** (eth0 for MGMT, eth1 for Internet/package downloads)
+5. Start command: `/bin/bash`
+6. Click **Apply → OK**
+7. Drag the new node onto your GNS3 workspace
+
+### 3.2 Connect to GNS3 Topology
+
+Draw **two cables** from the Docker container:
+
+```
+                    ┌──────────────────┐
+          eth0 ─────│  Docker Ubuntu   │───── eth1
+            │       │ Automation-Ctrl  │        │
+            │       └──────────────────┘        │
+            │                                   │
+     SW-Core (any free port)              GNS3 NAT Node
+     e.g. GigabitEthernet1/0              (for internet)
+```
+
+**Cable 1 — eth0 → SW-Core:**
+
+- Connect Docker's `eth0` to any unused port on SW-Core (e.g., Gi1/0 or Gi3/3)
+- If no ports are free: right-click SW-Core in GNS3 → **Configure** → increase adapter count
+
+**Cable 2 — eth1 → GNS3 NAT node:**
+
+- Add a **NAT** node: right-click workspace → Add node → search "NAT"
+- Connect Docker's `eth1` to the NAT node
+- This gives the container internet access for downloading packages
+
+### 3.3 Configure SW-Core Port for Docker (VLAN 99 Access)
+
+**On SW-Core console** — configure the port where Docker is connected:
+
+```
+enable
+configure terminal
+interface GigabitEthernet1/0
+ description AUTOMATION_CONTROLLER_DOCKER
+ switchport access vlan 99
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+exit
+end
+write memory
+```
+
+> **Note:** If SW-Core's uplink ports are routed (`no switchport`), other ports
+> can still be regular switchports. The switch supports both modes simultaneously.
+
+> **Note:** If your IOSvL2 doesn't accept `switchport access vlan 99`, check that
+> VLAN 99 exists first (`show vlan brief`). If not, create it: `vlan 99` → `name MGMT`.
 
 4. **Configure the Docker container's network**:
    - Start the Docker container (right-click → Start)
@@ -155,23 +609,38 @@ apt install -y python3 python3-pip openssh-client nano
 pip3 install netmiko pyyaml --break-system-packages
 ```
 
-> **Why `--break-system-packages`?** Ubuntu Noble (24.04) blocks pip installs outside
-> a virtual environment by default. This flag overrides that restriction. Alternatively,
-> use a venv:
+> **Why `--break-system-packages`?** Ubuntu 24.04 blocks pip installs outside a
+> virtual environment by default. This flag overrides it. Alternatively:
 >
 > ```bash
 > python3 -m venv /root/netmiko_env
 > source /root/netmiko_env/bin/activate
 > pip install netmiko pyyaml
+> # Add 'source /root/venv/bin/activate' to /root/.bashrc for persistence
 > ```
+
+**Verify installation:**
+
+```bash
+python3 -c "import netmiko; print(f'Netmiko version: {netmiko.__version__}')"
+python3 -c "import yaml; print('PyYAML OK')"
+```
+
+Expected:
+
+```
+Netmiko version: 4.x.x
+PyYAML OK
+```
+
+> **Packages ARE persistent** in GNS3 Docker containers. Once installed, they
+> survive container stop/start. You do NOT need to reinstall them each time.
 
 ---
 
-## 5. Step 2 — Copy Scripts into the Container <a name="step-2"></a>
+## Phase 5 — Deploy & Run Automation Scripts <a name="phase-5"></a>
 
-### Option A: Type/Paste Directly (Simplest)
-
-In the Docker console, create the files manually:
+### 5.1 Create Script Directory
 
 ```bash
 mkdir -p /root/netmiko_automation
@@ -352,24 +821,41 @@ python3 01_configure_routers.py
 
 ## 10. Troubleshooting <a name="7-troubleshooting"></a>
 
-| Problem                               | Cause                           | Fix                                                |
-| ------------------------------------- | ------------------------------- | -------------------------------------------------- |
-| `Connection timed out`                | Device unreachable              | Check: `ping <device_ip>` from Docker container    |
-| `Authentication failed`               | Wrong credentials               | Check `inventory.yaml` username/password           |
-| `No matching key exchange`            | Old SSH algorithms on c7200     | Uncomment `disabled_algorithms` in scripts         |
-| `SNMP command not recognized`         | Device doesn't support SNMP     | Some IOSvL2 images lack SNMP — check `show snmp ?` |
-| Docker can't ping anything            | IP/gateway not set on container | Run `ip addr show eth0` and check                  |
-| Docker pings switches but not routers | OSPF not routing from VLAN 99   | Check `show ip route` on SW-Core                   |
-| `ModuleNotFoundError: netmiko`        | Python packages not installed   | Run `pip3 install netmiko pyyaml`                  |
+| Problem                              | Cause                                    | Fix                                                                              |
+| ------------------------------------ | ---------------------------------------- | -------------------------------------------------------------------------------- |
+| `show ip ssh` says "not enabled"     | Missing hostname or domain-name          | Set both, then re-run `crypto key generate rsa`                                  |
+| `crypto key generate rsa` fails      | Image has no crypto support              | Use telnet: change `transport input telnet`, use `device_type: cisco_ios_telnet` |
+| `Connection timed out` (Netmiko)     | Device unreachable from Docker           | Run `ping <IP>` from Docker, check Phase 2 routes                                |
+| `Authentication failed`              | Wrong credentials                        | Verify `username admin privilege 15 secret admin123` on device                   |
+| SSH works but says `% Bad secrets`   | Enable password mismatch                 | Set `secret` in inventory.yaml to match device's enable secret                   |
+| `No matching key exchange`           | Old SSH algorithms on c7200              | Uncomment `disabled_algorithms` in Python scripts                                |
+| Docker loses IP on restart           | Network not persistent                   | Run `/root/startup.sh` or check Phase 3.5 .bashrc setup                          |
+| Docker can't install pip packages    | No internet on eth1                      | Check NAT node connection, run `dhclient eth1`                                   |
+| `ModuleNotFoundError: netmiko`       | pip install failed or venv not activated | Re-run `pip3 install netmiko pyyaml --break-system-packages`                     |
+| Ping to switch works but SSH refused | SSH not configured                       | Go back to Phase 1, configure SSH on that switch                                 |
+| Script connects but hangs            | Device sending unexpected prompts        | Add `verbose=True` to `ConnectHandler()` call for debugging                      |
 
 ---
 
-## Required Libraries
+## File Structure <a name="file-structure"></a>
 
-| Library   | Version | Purpose                              |
-| --------- | ------- | ------------------------------------ |
-| `netmiko` | ≥4.0    | SSH automation for Cisco IOS devices |
-| `pyyaml`  | ≥6.0    | Parse YAML inventory files           |
-| `Python`  | ≥3.8    | Script runtime                       |
+```
+netmiko_automation/
+├── inventory.yaml              ← Device inventory (YAML) — ALL parameters here
+├── 01_configure_routers.py     ← R-CORE + R-EDGE: interfaces, OSPF, NAT, ACLs
+├── 02_configure_snmp_all.py    ← SNMP push to ALL 10 devices
+├── 03_verify_config.py         ← Runs show commands, logs output
+├── README.md                   ← This guide
+└── logs/                       ← Auto-created timestamped log files
+    ├── router_config_YYYY-MM-DD_HH-MM-SS.log
+    ├── snmp_config_YYYY-MM-DD_HH-MM-SS.log
+    └── verification_YYYY-MM-DD_HH-MM-SS.log
+```
 
-Install: `pip3 install netmiko pyyaml`
+## Required Python Libraries
+
+| Library     | Install Command               | Purpose                      |
+| ----------- | ----------------------------- | ---------------------------- |
+| `netmiko`   | `pip3 install netmiko`        | SSH automation for Cisco IOS |
+| `pyyaml`    | `pip3 install pyyaml`         | Parse YAML inventory file    |
+| Python 3.8+ | Pre-installed on Ubuntu Noble | Script runtime               |
