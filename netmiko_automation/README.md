@@ -25,12 +25,13 @@ Your GNS3 network is **already configured manually**. These scripts automate the
 **same configuration** via Python + Netmiko SSH, proving you can manage network
 devices programmatically instead of typing CLI commands one by one.
 
-| If the device is... | Script behaviour | What this proves |
-|---|---|---|
+| If the device is...                         | Script behaviour                                          | What this proves                              |
+| ------------------------------------------- | --------------------------------------------------------- | --------------------------------------------- |
 | **Already configured** (your current state) | Detects existing config → reports "SKIPPING (idempotent)" | Script is safe to re-run; no duplicate config |
-| **Factory default / reset** | Pushes full configuration from scratch | Script actually works for deployment |
+| **Factory default / reset**                 | Pushes full configuration from scratch                    | Script actually works for deployment          |
 
 **For your report, demonstrate BOTH scenarios:**
+
 1. Run on your working network → show "idempotent/skipped" output
 2. Reset R-EDGE to defaults → run again → show fresh config applied
 
@@ -87,10 +88,11 @@ Connect the Docker container to **SW-Core** on any available port, configured as
      the **Adapters** count, then reconnect.
 
 3. **Configure the SW-Core port as VLAN 99 access**:
+
    ```
    enable
    configure terminal
-   interface GigabitEthernet1/0
+   interface GigabitEthernet1/1
     description AUTOMATION_CONTROLLER
     switchport access vlan 99
     switchport mode access
@@ -100,6 +102,7 @@ Connect the Docker container to **SW-Core** on any available port, configured as
    end
    write memory
    ```
+
    > **Note:** If SW-Core's uplink ports are routed (`no switchport`), other ports
    > can still be regular switchports. The switch supports both modes simultaneously.
 
@@ -120,23 +123,10 @@ Connect the Docker container to **SW-Core** on any available port, configured as
    ip route add default via 10.99.99.1
    ```
 
-   For **persistent** network config (survives reboot), create a netplan file:
-   ```bash
-   cat > /etc/netplan/01-mgmt.yaml << 'EOF'
-   network:
-     version: 2
-     ethernets:
-       eth0:
-         addresses:
-           - 10.99.99.100/24
-         routes:
-           - to: default
-             via: 10.99.99.1
-   EOF
-   netplan apply
-   ```
+   > **Note on Netplan:** GNS3 Docker container images do **not** use `netplan` or `systemd`. Using the `ip addr` / `ip route` commands above is all that is required. If a default route already exists (`RTNETLINK answers: File exists`), it can be safely ignored.
 
 5. **Test connectivity** from the Docker container:
+
    ```bash
    ping -c 3 10.99.99.1     # SW-Core (should succeed immediately)
    ping -c 3 10.99.99.11    # SW-D-DEIE (should succeed)
@@ -144,9 +134,9 @@ Connect the Docker container to **SW-Core** on any available port, configured as
    ping -c 3 10.0.1.2       # R-EDGE (should succeed — routed via OSPF)
    ```
 
-   > **If pings to R-CORE/R-EDGE fail:** These IPs are reached via OSPF routing
-   > through SW-Core. Make sure OSPF is working (`show ip ospf neighbor` on SW-Core
-   > should show R-CORE as FULL).
+   > **If pings to R-CORE/R-EDGE fail with `Packet filtered`:** An ACL on SW-Core or R-CORE is dropping ICMP (ping) packets. Test SSH directly (`ssh admin@10.0.0.2`), as management policies permit SSH (TCP 22) even if ping is blocked.
+   >
+   > **If pings to SW-D-DEIE (10.99.99.11) fail with `Destination Host Unreachable`:** Check that SW-D-DEIE is powered on, `interface Vlan99` is configured with `ip address 10.99.99.11 255.255.255.0` and `no shutdown`, and the trunk port to SW-Core is UP and allowing VLAN 99.
 
 ---
 
@@ -168,6 +158,7 @@ pip3 install netmiko pyyaml --break-system-packages
 > **Why `--break-system-packages`?** Ubuntu Noble (24.04) blocks pip installs outside
 > a virtual environment by default. This flag overrides that restriction. Alternatively,
 > use a venv:
+>
 > ```bash
 > python3 -m venv /root/netmiko_env
 > source /root/netmiko_env/bin/activate
@@ -203,6 +194,7 @@ cd Data-Networks-Project/netmiko_automation
 ### Option C: SCP from Host PC
 
 If your Windows PC can reach the Docker container:
+
 ```powershell
 scp -r "d:\8th sem\DAta Networks\Project\netmiko_automation\*" root@10.99.99.100:/root/netmiko_automation/
 ```
@@ -228,6 +220,7 @@ ssh admin@10.99.99.21
 ```
 
 For each test, you should see:
+
 ```
 Password: admin123
 R-CORE#
@@ -237,9 +230,11 @@ Type `exit` to disconnect after each test.
 
 > **If SSH fails with "Unable to negotiate" or "no matching key exchange":**
 > The c7200 may use older SSH algorithms. Add this to the SSH command:
+>
 > ```bash
 > ssh -o KexAlgorithms=+diffie-hellman-group14-sha1 admin@10.0.0.2
 > ```
+>
 > If this is the issue, uncomment the `disabled_algorithms` line in each script's
 > `build_connection_params()` function.
 
@@ -269,6 +264,7 @@ Each script creates a timestamped log file in the `logs/` directory.
 ## 8. Expected Outputs <a name="5-expected-outputs"></a>
 
 ### Script 1 — First Run (already configured)
+
 ```
 [16:30:00] ============================================================
 [16:30:00]   NETMIKO ROUTER CONFIGURATION SCRIPT
@@ -309,6 +305,7 @@ Each script creates a timestamped log file in the `logs/` directory.
 ```
 
 ### Script 2 — SNMP Push
+
 ```
 [16:35:00]   [R-CORE..............] (       10.0.0.2) ✓ SNMP already present — SKIPPED
 [16:35:02]   [R-EDGE..............] (       10.0.1.2) ✓ SNMP already present — SKIPPED
@@ -327,6 +324,7 @@ Each script creates a timestamped log file in the `logs/` directory.
 3. **Show both log files side-by-side** in your report
 
 To demonstrate fresh deployment:
+
 ```bash
 # In GNS3, open R-EDGE console and factory reset:
 R-EDGE# write erase
@@ -354,24 +352,24 @@ python3 01_configure_routers.py
 
 ## 10. Troubleshooting <a name="7-troubleshooting"></a>
 
-| Problem | Cause | Fix |
-|---|---|---|
-| `Connection timed out` | Device unreachable | Check: `ping <device_ip>` from Docker container |
-| `Authentication failed` | Wrong credentials | Check `inventory.yaml` username/password |
-| `No matching key exchange` | Old SSH algorithms on c7200 | Uncomment `disabled_algorithms` in scripts |
-| `SNMP command not recognized` | Device doesn't support SNMP | Some IOSvL2 images lack SNMP — check `show snmp ?` |
-| Docker can't ping anything | IP/gateway not set on container | Run `ip addr show eth0` and check |
-| Docker pings switches but not routers | OSPF not routing from VLAN 99 | Check `show ip route` on SW-Core |
-| `ModuleNotFoundError: netmiko` | Python packages not installed | Run `pip3 install netmiko pyyaml` |
+| Problem                               | Cause                           | Fix                                                |
+| ------------------------------------- | ------------------------------- | -------------------------------------------------- |
+| `Connection timed out`                | Device unreachable              | Check: `ping <device_ip>` from Docker container    |
+| `Authentication failed`               | Wrong credentials               | Check `inventory.yaml` username/password           |
+| `No matching key exchange`            | Old SSH algorithms on c7200     | Uncomment `disabled_algorithms` in scripts         |
+| `SNMP command not recognized`         | Device doesn't support SNMP     | Some IOSvL2 images lack SNMP — check `show snmp ?` |
+| Docker can't ping anything            | IP/gateway not set on container | Run `ip addr show eth0` and check                  |
+| Docker pings switches but not routers | OSPF not routing from VLAN 99   | Check `show ip route` on SW-Core                   |
+| `ModuleNotFoundError: netmiko`        | Python packages not installed   | Run `pip3 install netmiko pyyaml`                  |
 
 ---
 
 ## Required Libraries
 
-| Library | Version | Purpose |
-|---|---|---|
-| `netmiko` | ≥4.0 | SSH automation for Cisco IOS devices |
-| `pyyaml` | ≥6.0 | Parse YAML inventory files |
-| `Python` | ≥3.8 | Script runtime |
+| Library   | Version | Purpose                              |
+| --------- | ------- | ------------------------------------ |
+| `netmiko` | ≥4.0    | SSH automation for Cisco IOS devices |
+| `pyyaml`  | ≥6.0    | Parse YAML inventory files           |
+| `Python`  | ≥3.8    | Script runtime                       |
 
 Install: `pip3 install netmiko pyyaml`
