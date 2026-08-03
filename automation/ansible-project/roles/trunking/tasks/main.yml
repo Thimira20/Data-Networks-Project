@@ -1,0 +1,54 @@
+# ============================================================
+# Role: trunking — Configure trunk ports on switches
+# ============================================================
+# This role configures trunk links between switches using
+# 802.1Q encapsulation, native VLAN 100, and a restricted
+# allowed VLAN list.
+#
+# Variables used (from host_vars/<switch>.yml):
+#   trunk_interfaces: list of trunk port definitions
+#     - name: interface name (e.g., GigabitEthernet0/0)
+#     - description: port description
+#     - native_vlan: native VLAN ID (100)
+#     - allowed_vlans: comma-separated VLAN list
+#
+# NOTE: cisco.ios.ios_l2_interfaces does not support
+#       'switchport trunk encapsulation dot1q' directly.
+#       We use ios_config for the encapsulation command,
+#       then ios_l2_interfaces for the rest.
+# ============================================================
+---
+- name: Display trunking configuration task
+  ansible.builtin.debug:
+    msg: "Configuring {{ trunk_interfaces | length }} trunk port(s) on {{ inventory_hostname }}"
+  when: trunk_interfaces is defined and trunk_interfaces | length > 0
+
+- name: Skip if no trunk interfaces defined
+  ansible.builtin.debug:
+    msg: "No trunk interfaces defined for {{ inventory_hostname }} — skipping"
+  when: trunk_interfaces is not defined or trunk_interfaces | length == 0
+
+- name: Configure trunk encapsulation and description (ios_config)
+  cisco.ios.ios_config:
+    lines:
+      - description {{ item.description }}
+      - switchport trunk encapsulation dot1q
+      - switchport mode trunk
+      - switchport trunk native vlan {{ item.native_vlan }}
+      - switchport trunk allowed vlan {{ item.allowed_vlans }}
+      - no shutdown
+    parents: "interface {{ item.name }}"
+  loop: "{{ trunk_interfaces | default([]) }}"
+  loop_control:
+    label: "{{ item.name }} → {{ item.description }}"
+  register: trunk_result
+
+- name: Report trunk configuration status
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.item.name }} ({{ item.item.description }}) —
+      {{ 'CHANGED' if item.changed else 'OK (already configured)' }}
+  loop: "{{ trunk_result.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: trunk_result is defined

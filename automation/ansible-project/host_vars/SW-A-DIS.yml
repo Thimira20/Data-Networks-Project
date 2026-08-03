@@ -1,0 +1,28 @@
+# ============================================================
+# host_vars/SW-A-DIS.yml — Access Switch for DIS Department
+# ============================================================
+# NOTE: SW-A-DIS connects DIRECTLY to SW-CORE (no SW-D-DIS
+#       distribution switch exists in the topology).
+#
+# Topology connections (from GNS3):
+#   Gi0/0 → PC8 (e0)              [access VLAN 40]
+#   Gi0/1 → PC7 (e0)              [access VLAN 40]
+#   Gi1/0 → SW-CORE (Gi1/0)       [trunk uplink — directly to core]
+# ============================================================
+
+trunk_interfaces:
+  - name: GigabitEthernet1/0
+    description: TRUNK_TO_SW-CORE
+    native_vlan: 100
+    allowed_vlans: "10,20,30,40,99,100"
+
+access_interfaces:
+  - name: GigabitEthernet0/0
+    description: PC8_DIS_SERVER_FARM
+    access_vlan: 40
+    portfast: true
+
+  - name: GigabitEthernet0/1
+    description: PC7_DIS_SERVER_FARM
+    access_vlan: 40
+    portfast: true

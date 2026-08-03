@@ -1,0 +1,21 @@
+# ============================================================
+# group_vars/access_switches.yml — Access Switch Defaults
+# ============================================================
+# Settings specific to access-layer switches:
+#   SW-A-DEIE, SW-A-DCEE, SW-A-DMME, SW-A-DIS
+#
+# These are pure L2 switches that connect end-user PCs.
+# PortFast is enabled globally for faster port transitions.
+# STP priority remains at default (higher than distribution).
+# ============================================================
+
+# ----------------------------------------------------------
+# STP Priority — Access switches should NOT become root
+# ----------------------------------------------------------
+stp_priority: 32768
+
+# ----------------------------------------------------------
+# PortFast — Enable globally on access switches
+# (Individual portfast is also set per access port in roles)
+# ----------------------------------------------------------
+portfast_default: true

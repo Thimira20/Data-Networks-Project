@@ -1,0 +1,67 @@
+# ============================================================
+# site.yml — Master Playbook for Switch Automation
+# ============================================================
+# EE8203/EC8205 Design & Management of Data Networks
+# University of Ruhuna — 8th Semester Project
+#
+# This playbook orchestrates all switch configuration roles
+# in the correct deployment sequence:
+#   1. VLANs → all switches (must exist before trunks/access)
+#   2. Trunking → all switches (establish inter-switch links)
+#   3. Access ports → all switches (assign PCs to VLANs)
+#   4. STP → all switches (set priorities and portfast)
+#   5. Save → write memory on all switches
+#
+# Usage:
+#   ansible-playbook site.yml              # Full deployment
+#   ansible-playbook site.yml --check      # Dry-run (no changes)
+#   ansible-playbook site.yml -v           # Verbose output
+#   ansible-playbook site.yml --tags vlans # Run only VLANs
+# ============================================================
+---
+# ── Play 1: Create VLANs on ALL switches ─────────────────────
+- name: "Step 1 — Create VLANs on all switches"
+  hosts: all_switches
+  gather_facts: false
+  tags: [vlans]
+  roles:
+    - vlans
+
+# ── Play 2: Configure trunk links on ALL switches ────────────
+- name: "Step 2 — Configure trunk ports on all switches"
+  hosts: all_switches
+  gather_facts: false
+  tags: [trunking]
+  roles:
+    - trunking
+
+# ── Play 3: Configure access ports (PCs) ─────────────────────
+- name: "Step 3 — Assign access ports to department VLANs"
+  hosts: all_switches
+  gather_facts: false
+  tags: [access_ports]
+  roles:
+    - access_ports
+
+# ── Play 4: Configure Spanning Tree Protocol ─────────────────
+- name: "Step 4 — Configure STP parameters"
+  hosts: all_switches
+  gather_facts: false
+  tags: [stp]
+  roles:
+    - stp
+
+# ── Play 5: Save configuration to NVRAM ──────────────────────
+- name: "Step 5 — Save configuration (write memory)"
+  hosts: all_switches
+  gather_facts: false
+  tags: [save]
+  tasks:
+    - name: Save running-config to startup-config
+      cisco.ios.ios_config:
+        save_when: always
+      register: save_result
+
+    - name: Report save status
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} — Configuration saved to NVRAM ✓"

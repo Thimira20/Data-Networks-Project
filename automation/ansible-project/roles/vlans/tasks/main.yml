@@ -1,0 +1,35 @@
+# ============================================================
+# Role: vlans — Create VLANs on all switches
+# ============================================================
+# This role ensures all required VLANs exist on every switch
+# with the correct names. It is idempotent — VLANs that already
+# exist with the correct name will not be modified.
+#
+# Variables used (from group_vars/all.yml):
+#   vlans: list of {vlan_id, name} dicts
+# ============================================================
+---
+- name: Display VLAN configuration task
+  ansible.builtin.debug:
+    msg: "Configuring VLANs on {{ inventory_hostname }}"
+
+- name: Create VLANs with names
+  cisco.ios.ios_vlans:
+    config:
+      - vlan_id: "{{ item.vlan_id }}"
+        name: "{{ item.name }}"
+        state: active
+    state: merged
+  loop: "{{ vlans }}"
+  loop_control:
+    label: "VLAN {{ item.vlan_id }} ({{ item.name }})"
+  register: vlan_result
+
+- name: Report VLAN configuration status
+  ansible.builtin.debug:
+    msg: >-
+      VLAN {{ item.item.vlan_id }} ({{ item.item.name }}) —
+      {{ 'CHANGED' if item.changed else 'OK (already present)' }}
+  loop: "{{ vlan_result.results }}"
+  loop_control:
+    label: "VLAN {{ item.item.vlan_id }}"

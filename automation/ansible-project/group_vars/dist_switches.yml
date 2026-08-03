@@ -1,0 +1,16 @@
+# ============================================================
+# group_vars/dist_switches.yml — Distribution Switch Defaults
+# ============================================================
+# Settings specific to distribution-layer switches:
+#   SW-D-DEIE, SW-D-DCEE, SW-D-DMME
+#
+# These switches have L3 capabilities (ip routing enabled)
+# and serve as default gateways for their department VLANs.
+# STP priority is set lower to make them root bridge candidates.
+# ============================================================
+
+# ----------------------------------------------------------
+# STP Priority — Distribution switches should be preferred
+# root bridges for their local VLANs
+# ----------------------------------------------------------
+stp_priority: 24576

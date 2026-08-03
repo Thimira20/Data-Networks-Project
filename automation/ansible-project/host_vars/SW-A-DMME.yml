@@ -1,0 +1,25 @@
+# ============================================================
+# host_vars/SW-A-DMME.yml — Access Switch for DMME Department
+# ============================================================
+# Topology connections (from GNS3):
+#   Gi0/1 → PC5 (e0)              [access VLAN 30]
+#   Gi0/2 → PC6 (e0)              [access VLAN 30]
+#   Gi0/0 → SW-D-DMME (Gi0/0)     [trunk uplink]
+# ============================================================
+
+trunk_interfaces:
+  - name: GigabitEthernet0/0
+    description: TRUNK_TO_SW-D-DMME
+    native_vlan: 100
+    allowed_vlans: "10,20,30,40,99,100"
+
+access_interfaces:
+  - name: GigabitEthernet0/1
+    description: PC5_DMME_DEPT
+    access_vlan: 30
+    portfast: true
+
+  - name: GigabitEthernet0/2
+    description: PC6_DMME_DEPT
+    access_vlan: 30
+    portfast: true

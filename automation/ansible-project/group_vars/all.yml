@@ -1,0 +1,52 @@
+# ============================================================
+# group_vars/all.yml — Variables shared by ALL switches
+# ============================================================
+# Connection settings, credentials, and VLAN definitions
+# that apply to every switch in the inventory.
+# ============================================================
+
+# ----------------------------------------------------------
+# Ansible Connection Settings
+# ----------------------------------------------------------
+ansible_connection: ansible.netcommon.network_cli
+ansible_network_os: cisco.ios.ios
+ansible_become: true
+ansible_become_method: enable
+
+# ----------------------------------------------------------
+# Credentials (same across all devices)
+# ----------------------------------------------------------
+ansible_user: admin
+ansible_password: admin123
+ansible_become_password: admin123
+
+# ----------------------------------------------------------
+# VLAN Definitions — applied to ALL switches
+# ----------------------------------------------------------
+# These VLANs are created on every switch to ensure
+# consistent VLAN database across the campus network.
+vlans:
+  - vlan_id: 10
+    name: VLAN_DEIE
+  - vlan_id: 20
+    name: VLAN_DCEE
+  - vlan_id: 30
+    name: VLAN_DMME
+  - vlan_id: 40
+    name: VLAN_DIS
+  - vlan_id: 99
+    name: MGMT
+  - vlan_id: 100
+    name: NATIVE
+
+# ----------------------------------------------------------
+# Trunk Settings (defaults for all trunk ports)
+# ----------------------------------------------------------
+trunk_native_vlan: 100
+trunk_allowed_vlans: "10,20,30,40,99,100"
+trunk_encapsulation: dot1q
+
+# ----------------------------------------------------------
+# STP Global Settings
+# ----------------------------------------------------------
+stp_mode: "rapid-pvst"

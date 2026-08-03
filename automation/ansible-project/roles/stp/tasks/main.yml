@@ -1,0 +1,49 @@
+# ============================================================
+# Role: stp — Configure Spanning Tree Protocol
+# ============================================================
+# This role configures STP parameters on all switches:
+#   - Sets STP mode (rapid-pvst)
+#   - Sets VLAN-based STP priority
+#     - Distribution switches: 24576 (preferred root)
+#     - Access switches: 32768 (default, never root)
+#   - Enables PortFast default on access switches
+#
+# Variables used:
+#   stp_mode: STP mode string (from group_vars/all.yml)
+#   stp_priority: VLAN priority value (from group_vars/<group>.yml)
+#   portfast_default: boolean (from group_vars/access_switches.yml)
+#   vlans: list of VLAN definitions (from group_vars/all.yml)
+# ============================================================
+---
+- name: Display STP configuration task
+  ansible.builtin.debug:
+    msg: "Configuring STP on {{ inventory_hostname }} (priority: {{ stp_priority | default('default') }})"
+
+- name: Configure STP mode
+  cisco.ios.ios_config:
+    lines:
+      - "spanning-tree mode {{ stp_mode }}"
+  when: stp_mode is defined
+
+- name: Set STP priority for each VLAN
+  cisco.ios.ios_config:
+    lines:
+      - "spanning-tree vlan {{ item.vlan_id }} priority {{ stp_priority }}"
+  loop: "{{ vlans }}"
+  loop_control:
+    label: "VLAN {{ item.vlan_id }} → priority {{ stp_priority }}"
+  when: stp_priority is defined
+
+- name: Enable PortFast default on access switches
+  cisco.ios.ios_config:
+    lines:
+      - spanning-tree portfast default
+  when: portfast_default | default(false) | bool
+
+- name: Report STP configuration complete
+  ansible.builtin.debug:
+    msg: >-
+      STP configured on {{ inventory_hostname }} —
+      mode: {{ stp_mode | default('default') }},
+      priority: {{ stp_priority | default('default') }},
+      portfast_default: {{ portfast_default | default(false) }}
