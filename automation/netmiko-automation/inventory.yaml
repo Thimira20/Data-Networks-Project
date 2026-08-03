@@ -32,12 +32,12 @@ routers:
     role: "core_router"
     interfaces:
       - name: "FastEthernet0/0"
-        description: "LINK_TO_SW-CORE"
-        ip_address: "10.0.0.2"
-        subnet_mask: "255.255.255.252"
-      - name: "FastEthernet1/0"
         description: "LINK_TO_R-EDGE"
         ip_address: "10.0.1.1"
+        subnet_mask: "255.255.255.252"
+      - name: "FastEthernet1/0"
+        description: "LINK_TO_SW-CORE"
+        ip_address: "10.0.0.2"
         subnet_mask: "255.255.255.252"
     ospf:
       process_id: 1
@@ -48,7 +48,7 @@ routers:
       default_originate: true     # Propagate default route from R-EDGE
     # Default route to R-EDGE for internet access
     static_routes:
-      - { destination: "0.0.0.0", mask: "0.0.0.0", next_hop: "10.0.1.1" }
+      - { destination: "0.0.0.0", mask: "0.0.0.0", next_hop: "10.0.1.2" }
 
   - hostname: "R-EDGE"
     host: "10.0.1.2"              # Reachable from VLAN 99 via SW-Core → R-CORE routing
@@ -81,7 +81,7 @@ routers:
       outside_interface: "FastEthernet1/0"
     # Static aggregate route for all internal traffic via R-CORE
     static_routes:
-      - { destination: "10.0.0.0", mask: "255.0.0.0", next_hop: "10.0.1.2" }
+      - { destination: "10.0.0.0", mask: "255.0.0.0", next_hop: "10.0.1.1" }
 
 # ----------------------------------------------------------
 # L3 DISTRIBUTION SWITCHES (IOSvL2 in GNS3, L3 mode)
