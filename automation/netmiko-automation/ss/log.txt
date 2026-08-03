@@ -35,5 +35,10 @@
   Total changes:      0
   Log file:           /root/network-project/Data-Networks-Project/automation/netmiko-automation/logs/router_config_2026-08-03_23-34-48.log
 ============================================================
-(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# 
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ping -c 3 8.8.8.8
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
 
+--- 8.8.8.8 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2062ms
+
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# 
