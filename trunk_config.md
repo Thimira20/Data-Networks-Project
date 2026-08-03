@@ -1,4 +1,4 @@
-    SW-D-DEIE
+SW-D-DEIE
 
 SW-D-DEIE#show interfaces trunk
 

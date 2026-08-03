@@ -11,14 +11,15 @@
 
 ### Script 01 — Router Configuration (`01_configure_routers.py`)
 
-| Device | Configuration Applied |
-|---|---|
-| **R-CORE** | Interface IPs (Gi0/0, Gi0/1), OSPF Area 0, ACL-INFRASTRUCTURE-PROTECT |
-| **R-EDGE** | Interface IPs (Gi0/0, Gi0/1 DHCP), OSPF Area 0, NAT overload (PAT), ACL-WAN-INBOUND |
+| Device     | Configuration Applied                                                        |
+| ---------- | ---------------------------------------------------------------------------- |
+| **R-CORE** | Interface IPs (f0/0, f1/0), OSPF Area 0, ACL-INFRASTRUCTURE-PROTECT          |
+| **R-EDGE** | Interface IPs (f0/0, f1/0), OSPF Area 0, NAT overload (PAT), ACL-WAN-INBOUND |
 
 ### Script 02 — SNMP Push (`02_configure_snmp_all.py`)
 
 Pushes to ALL 10 devices (2 routers + 4 L3 switches + 4 L2 switches):
+
 - `snmp-server community public RO`
 - `snmp-server community private RW`
 - `snmp-server host 10.10.40.100 version 2c public`
@@ -75,8 +76,8 @@ python3 03_verify_config.py
 
 ## Required Python Libraries
 
-| Library | Install Command | Purpose |
-|---|---|---|
-| `netmiko` | `pip3 install netmiko` | SSH automation for Cisco IOS |
-| `pyyaml` | `pip3 install pyyaml` | Parse YAML inventory file |
-| Python 3.8+ | Pre-installed on Ubuntu | Script runtime |
+| Library     | Install Command         | Purpose                      |
+| ----------- | ----------------------- | ---------------------------- |
+| `netmiko`   | `pip3 install netmiko`  | SSH automation for Cisco IOS |
+| `pyyaml`    | `pip3 install pyyaml`   | Parse YAML inventory file    |
+| Python 3.8+ | Pre-installed on Ubuntu | Script runtime               |

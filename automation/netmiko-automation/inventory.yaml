@@ -6,16 +6,12 @@
 # hardcoded in any script.
 #
 # ⚠️  IMPORTANT — INTERFACE NAMES:
-#   R-CORE uses Cisco c7200 with PA-GE cards:
-#     - GigabitEthernet0/0 → SW-CORE
-#     - GigabitEthernet0/1 → R-EDGE
-#   R-EDGE uses Cisco c7200 with PA-FE (FastEthernet) cards:
+#   R-CORE uses Cisco c7200 with FastEthernet cards:
+#     - FastEthernet0/0 → SW-CORE
+#     - FastEthernet1/0 → R-EDGE
+#   R-EDGE uses Cisco c7200 with FastEthernet cards:
 #     - FastEthernet0/0 → R-CORE (inside)
 #     - FastEthernet1/0 → Internet NAT cloud (outside)
-#   (Confirmed in fixed_ping_from_ubunthu.md)
-#
-#   IOSvL2 switches use GigabitEthernet0/X — these should
-#   already match your existing GNS3 config.
 # ============================================================
 
 # ----------------------------------------------------------
@@ -35,11 +31,11 @@ routers:
     device_type: "cisco_ios"      # c7200 uses standard cisco_ios
     role: "core_router"
     interfaces:
-      - name: "GigabitEthernet0/0"
+      - name: "FastEthernet0/0"
         description: "LINK_TO_SW-CORE"
         ip_address: "10.0.0.2"
         subnet_mask: "255.255.255.252"
-      - name: "GigabitEthernet0/1"
+      - name: "FastEthernet1/0"
         description: "LINK_TO_R-EDGE"
         ip_address: "10.0.1.1"
         subnet_mask: "255.255.255.252"
