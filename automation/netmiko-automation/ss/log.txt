@@ -1,0 +1,44 @@
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# python3 01_configure_routers.py
+[23:34:48] 
+============================================================
+  NETMIKO ROUTER CONFIGURATION SCRIPT
+  EE8203 — Network Automation with Python (Netmiko)
+  Timestamp: 2026-08-03_23-34-48
+============================================================
+[23:34:48] 
+✓ Inventory loaded: /root/network-project/Data-Networks-Project/automation/netmiko-automation/inventory.yaml
+[23:34:48]   Found 2 routers to configure
+
+[23:34:48] 
+[1/2] ──────────────────────────────────────────────────
+[23:34:48] Connecting to R-CORE (10.0.0.2)...
+[23:34:58]   ✗ FAILED: Connection to R-CORE (10.0.0.2) timed out!
+[23:34:58]     Troubleshoot:
+[23:34:58]       1. Is the device powered on in GNS3?
+[23:34:58]       2. Can you ping 10.0.0.2 from this machine?
+[23:34:58]       3. Is SSH enabled on the device?
+[23:34:58] 
+[2/2] ──────────────────────────────────────────────────
+[23:34:58] Connecting to R-EDGE (10.0.1.2)...
+[23:35:08]   ✗ FAILED: Connection to R-EDGE (10.0.1.2) timed out!
+[23:35:08]     Troubleshoot:
+[23:35:08]       1. Is the device powered on in GNS3?
+[23:35:08]       2. Can you ping 10.0.1.2 from this machine?
+[23:35:08]       3. Is SSH enabled on the device?
+[23:35:08] 
+============================================================
+  SUMMARY
+  ─────────────────────────────────────
+  Devices attempted:  2
+  Devices successful: 0
+  Devices failed:     2
+  Total changes:      0
+  Log file:           /root/network-project/Data-Networks-Project/automation/netmiko-automation/logs/router_config_2026-08-03_23-34-48.log
+============================================================
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ping -c 3 8.8.8.8
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+
+--- 8.8.8.8 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2062ms
+
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# 
