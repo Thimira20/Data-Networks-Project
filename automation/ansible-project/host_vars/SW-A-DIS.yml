@@ -1,6 +1,8 @@
 # ============================================================
 # host_vars/SW-A-DIS.yml — Access Switch for DIS Department
 # ============================================================
+# PURE LAYER 2 SWITCH
+#
 # NOTE: SW-A-DIS connects DIRECTLY to SW-CORE (no SW-D-DIS
 #       distribution switch exists in the topology).
 #
@@ -8,14 +10,28 @@
 #   Gi0/0 → PC8 (e0)              [access VLAN 40]
 #   Gi0/1 → PC7 (e0)              [access VLAN 40]
 #   Gi1/0 → SW-CORE (Gi1/0)       [trunk uplink — directly to core]
+#
+# Default gateway points to SW-CORE (since there is no
+# distribution switch for DIS department).
 # ============================================================
 
+# ----------------------------------------------------------
+# Default Gateway (L2 switch management reachability)
+# ----------------------------------------------------------
+default_gateway: "10.99.99.1"
+
+# ----------------------------------------------------------
+# Trunk Uplink to SW-CORE (direct, no dist switch)
+# ----------------------------------------------------------
 trunk_interfaces:
   - name: GigabitEthernet1/0
     description: TRUNK_TO_SW-CORE
     native_vlan: 100
     allowed_vlans: "10,20,30,40,99,100"
 
+# ----------------------------------------------------------
+# Access Ports — PC connections
+# ----------------------------------------------------------
 access_interfaces:
   - name: GigabitEthernet0/0
     description: PC8_DIS_SERVER_FARM

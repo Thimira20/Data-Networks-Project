@@ -1,0 +1,98 @@
+# ============================================================
+# roles/l3_distribution/tasks/main.yml
+# ============================================================
+# Configures distribution switches as Layer 3 multilayer devices:
+#   1. Enable ip routing
+#   2. Remove ip default-gateway (invalid on L3)
+#   3. Configure routed uplink to SW-CORE (no switchport, /30 IP)
+#   4. Create department VLAN SVI (gateway for hosts)
+#   5. Create/verify MGMT VLAN 99 SVI
+#   6. Configure OSPF process 1 (area 0)
+#   7. Add static /32 host route for Docker container
+#
+# Applied to: dist_switches group only
+# ============================================================
+---
+# ── Step 1: Enable Layer 3 routing ────────────────────────────
+- name: "L3 Distribution — Enable ip routing"
+  cisco.ios.ios_config:
+    lines:
+      - ip routing
+  tags: [l3_distribution]
+
+# ── Step 2: Remove ip default-gateway (not valid on L3) ───────
+- name: "L3 Distribution — Remove ip default-gateway"
+  cisco.ios.ios_config:
+    lines:
+      - no ip default-gateway
+  tags: [l3_distribution]
+
+# ── Step 3: Configure routed uplink to SW-CORE ────────────────
+# This converts the trunk port to a routed port with /30 IP
+- name: "L3 Distribution — Configure routed uplink to SW-CORE"
+  cisco.ios.ios_config:
+    parents: "interface {{ routed_uplink.name }}"
+    lines:
+      - "description {{ routed_uplink.description }}"
+      - "no switchport"
+      - "ip address {{ routed_uplink.ip_address }} {{ routed_uplink.subnet_mask }}"
+      - "no shutdown"
+  when: routed_uplink is defined
+  tags: [l3_distribution]
+
+# ── Step 4: Create department VLAN SVI ────────────────────────
+# Each distribution switch hosts the default gateway for its VLAN
+- name: "L3 Distribution — Create department VLAN SVI"
+  cisco.ios.ios_config:
+    parents: "interface Vlan{{ department_svi.vlan_id }}"
+    lines:
+      - "description {{ department_svi.description }}"
+      - "ip address {{ department_svi.ip_address }} {{ department_svi.subnet_mask }}"
+      - "no shutdown"
+  when: department_svi is defined
+  tags: [l3_distribution]
+
+# ── Step 5: Create/verify MGMT VLAN 99 SVI ───────────────────
+- name: "L3 Distribution — Configure MGMT VLAN 99 SVI"
+  cisco.ios.ios_config:
+    parents: "interface Vlan{{ mgmt_svi.vlan_id }}"
+    lines:
+      - "description {{ mgmt_svi.description }}"
+      - "ip address {{ mgmt_svi.ip_address }} {{ mgmt_svi.subnet_mask }}"
+      - "no shutdown"
+  when: mgmt_svi is defined
+  tags: [l3_distribution]
+
+# ── Step 6: Configure OSPF ────────────────────────────────────
+# OSPF process 1, area 0 — advertises department subnet,
+# P2P link, and MGMT subnet
+- name: "L3 Distribution — Configure OSPF process"
+  cisco.ios.ios_config:
+    parents: "router ospf {{ ospf_process_id }}"
+    lines:
+      - "router-id {{ ospf_router_id }}"
+      - "passive-interface default"
+      - "no passive-interface {{ ospf_active_interface }}"
+  when: ospf_router_id is defined
+  tags: [l3_distribution]
+
+- name: "L3 Distribution — Add OSPF network statements"
+  cisco.ios.ios_config:
+    parents: "router ospf {{ ospf_process_id }}"
+    lines:
+      - "network {{ item.network }} {{ item.wildcard }} area {{ item.area }}"
+  loop: "{{ ospf_networks | default([]) }}"
+  loop_control:
+    label: "{{ item.network }}/{{ item.wildcard }}"
+  tags: [l3_distribution]
+
+# ── Step 7: Static /32 host route for Docker ──────────────────
+# Fixes VLAN 99 L2 split — Docker (10.99.99.100) return path
+- name: "L3 Distribution — Add Docker return route"
+  cisco.ios.ios_config:
+    lines:
+      - "ip route {{ docker_host_ip }} 255.255.255.255 {{ docker_return_route_nexthop }}"
+  when:
+    - docker_host_ip is defined
+    - docker_return_route_nexthop is defined
+  tags: [l3_distribution]

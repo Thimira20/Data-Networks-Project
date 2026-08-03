@@ -1,18 +1,34 @@
 # ============================================================
 # host_vars/SW-A-DCEE.yml — Access Switch for DCEE Department
 # ============================================================
+# PURE LAYER 2 SWITCH
+#
 # Topology connections (from GNS3):
 #   Gi0/1 → PC3 (e0)              [access VLAN 20]
 #   Gi0/2 → PC4 (e0)              [access VLAN 20]
 #   Gi0/0 → SW-D-DCEE (Gi0/0)     [trunk uplink]
+#
+# Default gateway points to LOCAL distribution switch
+# (not SW-CORE) — see fixed_ping_from_ubunthu.md Problem 1.
 # ============================================================
 
+# ----------------------------------------------------------
+# Default Gateway (L2 switch management reachability)
+# ----------------------------------------------------------
+default_gateway: "10.99.99.12"
+
+# ----------------------------------------------------------
+# Trunk Uplink to Distribution Switch
+# ----------------------------------------------------------
 trunk_interfaces:
   - name: GigabitEthernet0/0
     description: TRUNK_TO_SW-D-DCEE
     native_vlan: 100
     allowed_vlans: "10,20,30,40,99,100"
 
+# ----------------------------------------------------------
+# Access Ports — PC connections
+# ----------------------------------------------------------
 access_interfaces:
   - name: GigabitEthernet0/1
     description: PC3_DCEE_DEPT

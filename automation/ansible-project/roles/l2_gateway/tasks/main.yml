@@ -1,0 +1,26 @@
+# ============================================================
+# roles/l2_gateway/tasks/main.yml
+# ============================================================
+# Configures default gateway on Layer 2 access switches.
+#
+# After the L3 distribution switch conversion, VLAN 99 is
+# split into separate L2 broadcast domains. Each access switch
+# must point its default-gateway to the LOCAL distribution
+# switch (not SW-CORE) for management reachability.
+#
+# Gateway alignment:
+#   SW-A-DEIE → 10.99.99.11 (SW-D-DEIE)
+#   SW-A-DCEE → 10.99.99.12 (SW-D-DCEE)
+#   SW-A-DMME → 10.99.99.13 (SW-D-DMME)
+#   SW-A-DIS  → 10.99.99.1  (SW-CORE, no dist switch)
+#
+# Applied to: access_switches group only
+# ============================================================
+---
+# ── Step 1: Set ip default-gateway ────────────────────────────
+- name: "L2 Gateway — Set ip default-gateway"
+  cisco.ios.ios_config:
+    lines:
+      - "ip default-gateway {{ default_gateway }}"
+  when: default_gateway is defined
+  tags: [l2_gateway]
