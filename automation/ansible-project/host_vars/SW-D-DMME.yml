@@ -1,17 +1,14 @@
 # ============================================================
 # host_vars/SW-D-DMME.yml — Distribution Switch for DMME
 # ============================================================
-# Topology connections (from GNS3):
-#   Gi0/3 → SW-CORE (Gi0/3)     [trunk uplink]
+# Topology connections (from GNS3 & trunk_config.md):
 #   Gi0/0 → SW-A-DMME (Gi0/0)   [trunk downlink]
+#
+# Note: Uplink to SW-CORE (Gi0/3) is converted to a Layer 3
+#       routed port (10.0.30.2/30) per L3 conversion report.
 # ============================================================
 
 trunk_interfaces:
-  - name: GigabitEthernet0/3
-    description: TRUNK_TO_SW-CORE
-    native_vlan: 100
-    allowed_vlans: "10,20,30,40,99,100"
-
   - name: GigabitEthernet0/0
     description: TRUNK_TO_SW-A-DMME
     native_vlan: 100

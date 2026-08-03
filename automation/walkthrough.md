@@ -59,14 +59,13 @@ automation/
 
 ### Distribution Switches (trunk-only)
 
+> **Note:** Uplinks from distribution switches to SW-Core (SW-D-DEIE Gi0/0, SW-D-DCEE Gi0/2, SW-D-DMME Gi0/3) are Layer 3 **routed ports** (`no switchport`, /30 IPs) per the L3 Conversion Report. Therefore, only the downlinks to access switches operate as Layer 2 trunks as verified in `trunk_config.md`.
+
 | Switch | Port → Destination | Mode |
 |---|---|---|
-| **SW-D-DEIE** | Gi0/0 → SW-CORE | trunk |
-| | Gi0/2 → SW-A-DEIE | trunk |
-| **SW-D-DCEE** | Gi0/2 → SW-CORE | trunk |
-| | Gi0/0 → SW-A-DCEE | trunk |
-| **SW-D-DMME** | Gi0/3 → SW-CORE | trunk |
-| | Gi0/0 → SW-A-DMME | trunk |
+| **SW-D-DEIE** | Gi0/2 → SW-A-DEIE | trunk |
+| **SW-D-DCEE** | Gi0/0 → SW-A-DCEE | trunk |
+| **SW-D-DMME** | Gi0/0 → SW-A-DMME | trunk |
 
 ### Access Switches (access + trunk)
 

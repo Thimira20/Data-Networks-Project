@@ -65,9 +65,9 @@ ansible-project/
 │   ├── dist_switches.yml        # Distribution: STP priority 24576
 │   └── access_switches.yml     # Access: STP priority 32768, portfast
 ├── host_vars/
-│   ├── SW-D-DEIE.yml            # Gi0/0→CORE, Gi0/2→SW-A-DEIE
-│   ├── SW-D-DCEE.yml            # Gi0/2→CORE, Gi0/0→SW-A-DCEE
-│   ├── SW-D-DMME.yml            # Gi0/3→CORE, Gi0/0→SW-A-DMME
+│   ├── SW-D-DEIE.yml            # Gi0/2→SW-A-DEIE (trunk downlink)
+│   ├── SW-D-DCEE.yml            # Gi0/0→SW-A-DCEE (trunk downlink)
+│   ├── SW-D-DMME.yml            # Gi0/0→SW-A-DMME (trunk downlink)
 │   ├── SW-A-DEIE.yml            # Gi0/0,Gi0/2→VLAN10, Gi0/1→trunk
 │   ├── SW-A-DCEE.yml            # Gi0/1,Gi0/2→VLAN20, Gi0/0→trunk
 │   ├── SW-A-DMME.yml            # Gi0/1,Gi0/2→VLAN30, Gi0/0→trunk
@@ -178,7 +178,6 @@ changed: [SW-D-DEIE] => (item=VLAN 30 (VLAN_DMME))
 PLAY [Step 2 — Configure trunk ports on all switches] **************
 
 TASK [trunking : Configure trunk encapsulation and description] ****
-changed: [SW-D-DEIE] => (item=GigabitEthernet0/0 → TRUNK_TO_SW-CORE)
 changed: [SW-D-DEIE] => (item=GigabitEthernet0/2 → TRUNK_TO_SW-A-DEIE)
 ...
 
