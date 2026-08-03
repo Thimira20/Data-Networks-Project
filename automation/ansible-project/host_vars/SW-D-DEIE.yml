@@ -1,17 +1,14 @@
 # ============================================================
 # host_vars/SW-D-DEIE.yml — Distribution Switch for DEIE
 # ============================================================
-# Topology connections (from GNS3):
-#   Gi0/0 → SW-CORE (Gi0/0)     [trunk uplink]
+# Topology connections (from GNS3 & trunk_config.md):
 #   Gi0/2 → SW-A-DEIE (Gi0/1)   [trunk downlink]
+#
+# Note: Uplink to SW-CORE (Gi0/0) is converted to a Layer 3
+#       routed port (10.0.10.2/30) per L3 conversion report.
 # ============================================================
 
 trunk_interfaces:
-  - name: GigabitEthernet0/0
-    description: TRUNK_TO_SW-CORE
-    native_vlan: 100
-    allowed_vlans: "10,20,30,40,99,100"
-
   - name: GigabitEthernet0/2
     description: TRUNK_TO_SW-A-DEIE
     native_vlan: 100
