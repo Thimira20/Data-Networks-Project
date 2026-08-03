@@ -176,9 +176,9 @@ def build_connection_params(device, credentials):
         "username":    credentials["username"],
         "password":    credentials["password"],
         "secret":      credentials.get("secret", credentials["password"]),
-        "timeout":     30,       # Seconds to wait for TCP connection
-        "session_timeout": 60,   # Seconds before idle session times out
-        "banner_timeout":  30,   # Seconds to wait for SSH banner
+        "timeout":     30,        # Seconds to wait for TCP connection
+        "session_timeout": 120,   # Increased: DHCP interfaces may delay prompts
+        "banner_timeout":  30,    # Seconds to wait for SSH banner
         # Uncomment below if SSH fails with algorithm errors on c7200:
         # "disabled_algorithms": {"pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]},
     }
@@ -219,30 +219,53 @@ def build_interface_commands(interface_config):
                          subnet_mask, and optionally nat_direction
     
     Returns:
-        list: IOS CLI commands for configuring the interface
+        tuple: (phase1_commands, phase2_commands)
+               phase1_commands — commands to send first (may include 'ip address dhcp')
+               phase2_commands — remaining commands to send after phase1 completes
+               If the interface is NOT DHCP, phase2_commands is [] (everything in phase1).
     """
-    commands = []
     name = interface_config["name"]
-    commands.append(f"interface {name}")
-    commands.append(f" description {interface_config['description']}")
-    
-    # Handle DHCP vs static IP assignment
-    if interface_config["ip_address"] == "dhcp":
-        commands.append(" ip address dhcp")
+    is_dhcp = interface_config["ip_address"] == "dhcp"
+
+    if is_dhcp:
+        # ── DHCP interface: split into two phases ─────────────────────────
+        # Phase 1: enter interface, set description, issue 'ip address dhcp'
+        #   → Netmiko must wait for DHCP discovery before the prompt returns.
+        #     We send this block alone with a long read_timeout.
+        phase1 = [
+            f"interface {name}",
+            f" description {interface_config['description']}",
+            " ip address dhcp",
+            "exit",
+        ]
+        # Phase 2: re-enter the interface for any remaining commands
+        #   (nat direction, no shutdown) now that the prompt is stable.
+        phase2_body = []
+        nat_dir = interface_config.get("nat_direction")
+        if nat_dir:
+            phase2_body.append(f" ip nat {nat_dir}")
+        phase2_body.append(" no shutdown")
+
+        phase2 = [
+            f"interface {name}",
+            *phase2_body,
+            "exit",
+        ]
+        return phase1, phase2
     else:
-        commands.append(
+        # ── Static IP interface: single phase ─────────────────────────────
+        commands = [
+            f"interface {name}",
+            f" description {interface_config['description']}",
             f" ip address {interface_config['ip_address']} "
-            f"{interface_config['subnet_mask']}"
-        )
-    
-    # Add NAT direction if specified (inside/outside)
-    nat_dir = interface_config.get("nat_direction")
-    if nat_dir:
-        commands.append(f" ip nat {nat_dir}")
-    
-    commands.append(" no shutdown")
-    commands.append("exit")
-    return commands
+            f"{interface_config['subnet_mask']}",
+        ]
+        nat_dir = interface_config.get("nat_direction")
+        if nat_dir:
+            commands.append(f" ip nat {nat_dir}")
+        commands.append(" no shutdown")
+        commands.append("exit")
+        return commands, []
 
 
 def build_ospf_commands(ospf_config):
@@ -374,17 +397,39 @@ def configure_router(device, credentials, log_file):
         # ── Step 2: Configure Interfaces ──────────────────────
         for iface in device.get("interfaces", []):
             iface_name = iface["name"]
+            is_dhcp = iface["ip_address"] == "dhcp"
             # Idempotency: check if IP already assigned
-            check_str = iface["ip_address"] if iface["ip_address"] != "dhcp" else "ip address dhcp"
-            
+            check_str = "ip address dhcp" if is_dhcp else iface["ip_address"]
+
             if check_config_exists(connection, check_str):
                 log(log_file, f"  → {iface_name} already configured — SKIPPING (idempotent)")
                 sections_skipped += 1
             else:
                 log(log_file, f"  → Configuring {iface_name}...")
-                commands = build_interface_commands(iface)
-                output = connection.send_config_set(commands)
-                log(log_file, f"    Device output:\n{output}", also_print=False)
+                phase1, phase2 = build_interface_commands(iface)
+
+                if is_dhcp:
+                    # Phase 1: send 'ip address dhcp' with an extended read_timeout
+                    # to survive the DHCP discovery delay (can take 15-30 s on GNS3).
+                    log(log_file, f"    [DHCP] Sending phase-1 (ip address dhcp) — extended timeout 60 s...")
+                    output1 = connection.send_config_set(
+                        phase1,
+                        read_timeout=60,   # Wait up to 60 s for DHCP + prompt return
+                    )
+                    log(log_file, f"    Device output (phase-1):\n{output1}", also_print=False)
+
+                    # Phase 2: remaining commands (ip nat outside, no shutdown)
+                    if phase2:
+                        log(log_file, f"    [DHCP] Sending phase-2 (nat/no-shutdown)...")
+                        output2 = connection.send_config_set(
+                            phase2,
+                            read_timeout=30,
+                        )
+                        log(log_file, f"    Device output (phase-2):\n{output2}", also_print=False)
+                else:
+                    output = connection.send_config_set(phase1)
+                    log(log_file, f"    Device output:\n{output}", also_print=False)
+
                 log(log_file, f"  ✓ {iface_name} configured successfully")
                 changes_made += 1
 
