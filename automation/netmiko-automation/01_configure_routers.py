@@ -96,8 +96,8 @@ ROUTER_ACLS = {
             " permit ip any any",
             "exit",
         ],
-        # Apply ACL to the WAN-facing interface
-        "apply_interface": "GigabitEthernet0/1",  # ← Update if different in GNS3
+        # Apply ACL to the WAN-facing interface (FastEthernet1/0)
+        "apply_interface": "FastEthernet1/0",
         "apply_direction": "in",
     },
 }
