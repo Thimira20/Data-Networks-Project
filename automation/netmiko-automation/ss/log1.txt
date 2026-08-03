@@ -1,0 +1,112 @@
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ping -c 3 10.0.0.2
+PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+
+--- 10.0.0.2 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2046ms
+
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ping -c 3 10.0.0.2
+PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+
+--- 10.0.0.2 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2029ms
+
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ping -c 3 10.0.1.2
+PING 10.0.1.2 (10.0.1.2) 56(84) bytes of data.
+
+--- 10.0.1.2 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2028ms
+
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ip route show
+default via 10.99.99.1 dev eth0 
+10.99.99.0/24 dev eth0 proto kernel scope link src 10.99.99.100 
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ip route add 10.0.0.0/30 via 10.99.99.1
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ip route add 10.0.1.0/30 via 10.99.99.1
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ip route show
+default via 10.99.99.1 dev eth0 
+10.0.0.0/30 via 10.99.99.1 dev eth0 
+10.0.1.0/30 via 10.99.99.1 dev eth0 
+10.99.99.0/24 dev eth0 proto kernel scope link src 10.99.99.100 
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ping -c 3 10.0.0.2
+PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+
+--- 10.0.0.2 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2085ms
+
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ping -c 3 10.0.0.2
+PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+^[[A^[[A^[[A^C
+--- 10.0.0.2 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2029ms
+
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# ping -c 3 10.0.1.2
+PING 10.0.1.2 (10.0.1.2) 56(84) bytes of data.
+
+--- 10.0.1.2 ping statistics ---
+3 packets transmitted, 0 received, 100% packet loss, time 2052ms
+
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# 
+
+
+
+SW-Core#show ip route 10.0.0.0
+Routing entry for 10.0.0.0/8, 21 known subnets
+  Attached (12 connections)
+  Variably subnetted with 3 masks
+C        10.0.0.0/30 is directly connected, GigabitEthernet0/1
+L        10.0.0.1/32 is directly connected, GigabitEthernet0/1
+C        10.0.10.0/30 is directly connected, GigabitEthernet0/0
+L        10.0.10.1/32 is directly connected, GigabitEthernet0/0
+C        10.0.20.0/30 is directly connected, GigabitEthernet0/2
+L        10.0.20.1/32 is directly connected, GigabitEthernet0/2
+C        10.0.30.0/30 is directly connected, GigabitEthernet0/3
+L        10.0.30.1/32 is directly connected, GigabitEthernet0/3
+O        10.10.10.0/24 [110/2] via 10.0.10.2, 2d10h, GigabitEthernet0/0
+O        10.10.20.0/24 [110/2] via 10.0.20.2, 2d10h, GigabitEthernet0/2
+O        10.10.30.0/24 [110/2] via 10.0.30.2, 2d10h, GigabitEthernet0/3
+C        10.10.40.0/24 is directly connected, Vlan40
+L        10.10.40.1/32 is directly connected, Vlan40
+C        10.99.99.0/24 is directly connected, Vlan99
+L        10.99.99.1/32 is directly connected, Vlan99
+S        10.99.99.11/32 [1/0] via 10.0.10.2
+S        10.99.99.12/32 [1/0] via 10.0.20.2
+S        10.99.99.13/32 [1/0] via 10.0.30.2
+S        10.99.99.21/32 [1/0] via 10.0.10.2
+          
+SW-Core#how ip ospf neighbor
+         ^
+% Invalid input detected at '^' marker.
+
+SW-Core#show ip ospf neighbor
+
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+3.3.3.13          1   FULL/DR         00:00:33    10.0.30.2       GigabitEthernet0/3
+3.3.3.12          1   FULL/DR         00:00:36    10.0.20.2       GigabitEthernet0/2
+3.3.3.11          1   FULL/DR         00:00:34    10.0.10.2       GigabitEthernet0/0
+
+
+R-EDGE#show ip ssh
+SSH Enabled - version 2.0
+Authentication timeout: 120 secs; Authentication retries: 3
+Minimum expected Diffie Hellman key size : 1024 bits
+R-EDGE#show ip ssh
+SSH Enabled - version 2.0
+Authentication timeout: 120 secs; Authentication retries: 3
+Minimum expected Diffie Hellman key size : 1024 bits
+R-EDGE#show ip interface brief
+Interface                  IP-Address      OK? Method Status                Protocol
+FastEthernet0/0            10.0.1.1        YES NVRAM  up                    up      
+FastEthernet1/0            192.168.42.239  YES DHCP   up                    up      
+FastEthernet1/1            unassigned      YES NVRAM  administratively down down    
+NVI0                       10.0.1.1        YES unset  up                    up  
+
+
+R-CORE#show ip ssh
+SSH Enabled - version 2.0
+Authentication timeout: 120 secs; Authentication retries: 3
+Minimum expected Diffie Hellman key size : 1024 bits
+R-CORE#show ip interface brief
+Interface                  IP-Address      OK? Method Status                Protocol
+FastEthernet0/0            10.0.1.2        YES NVRAM  up                    up      
+FastEthernet1/0            unassigned      YES DHCP   up                    up      
+FastEthernet1/1            unassigned      YES NVRAM  administratively down down    
+NVI0                       10.0.1.2        YES unset  up                    up   
