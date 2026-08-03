@@ -6,10 +6,13 @@
 #
 # Purpose:
 #   Restores all switches to a clean baseline by:
-#     1. Removing non-default VLANs (10, 20, 30, 40, 99, 100)
-#     2. Resetting configured interfaces to default
-#     3. Removing STP customizations
-#     4. Saving the clean configuration
+#     1. Removing L3 config from distribution switches (OSPF,
+#        SVIs, static routes, ip routing, routed ports → trunk)
+#     2. Removing default-gateway from access switches
+#     3. Removing non-default VLANs (10, 20, 30, 40, 99, 100)
+#     4. Resetting configured interfaces to default
+#     5. Removing STP customizations
+#     6. Saving the clean configuration
 #
 # Target execution time: < 5 minutes
 #
@@ -17,16 +20,86 @@
 #   ansible-playbook playbooks/rollback.yml
 #
 # ⚠ WARNING: This removes ALL automation-applied configuration!
-#   Switches will lose VLAN assignments, trunk configs, and
-#   access port settings. Management connectivity via VLAN 99
-#   will be disrupted.
+#   Switches will lose VLAN assignments, trunk configs, access
+#   port settings, L3 routing, and OSPF. Management connectivity
+#   via VLAN 99 will be disrupted.
 # ============================================================
 ---
-- name: "ROLLBACK — Restore switches to clean baseline"
+# ── Phase 1: Rollback L3 Distribution Config ─────────────────
+- name: "ROLLBACK Phase 1 — Remove L3 distribution config"
+  hosts: dist_switches
+  gather_facts: false
+  tasks:
+    # Remove OSPF process
+    - name: "Remove OSPF process"
+      cisco.ios.ios_config:
+        lines:
+          - "no router ospf {{ ospf_process_id | default(1) }}"
+      ignore_errors: true
+
+    # Remove department VLAN SVI
+    - name: "Remove department VLAN SVI"
+      cisco.ios.ios_config:
+        lines:
+          - "no interface Vlan{{ department_svi.vlan_id }}"
+      when: department_svi is defined
+      ignore_errors: true
+
+    # Remove Docker static route
+    - name: "Remove Docker return route"
+      cisco.ios.ios_config:
+        lines:
+          - "no ip route {{ docker_host_ip }} 255.255.255.255 {{ docker_return_route_nexthop }}"
+      when:
+        - docker_host_ip is defined
+        - docker_return_route_nexthop is defined
+      ignore_errors: true
+
+    # Convert routed uplink back to switchport
+    - name: "Revert routed uplink to switchport"
+      cisco.ios.ios_config:
+        parents: "interface {{ routed_uplink.name }}"
+        lines:
+          - "no ip address"
+          - "switchport"
+          - "switchport trunk encapsulation dot1q"
+          - "switchport mode trunk"
+          - "switchport trunk native vlan 100"
+          - "switchport trunk allowed vlan 10,20,30,40,99,100"
+          - "no shutdown"
+      when: routed_uplink is defined
+      ignore_errors: true
+
+    # Disable ip routing
+    - name: "Disable ip routing"
+      cisco.ios.ios_config:
+        lines:
+          - "no ip routing"
+      ignore_errors: true
+
+    # Restore ip default-gateway (L2 mode)
+    - name: "Restore ip default-gateway for L2 mode"
+      cisco.ios.ios_config:
+        lines:
+          - "ip default-gateway 10.99.99.1"
+      ignore_errors: true
+
+# ── Phase 2: Rollback L2 Access Config ───────────────────────
+- name: "ROLLBACK Phase 2 — Remove access switch default gateways"
+  hosts: access_switches
+  gather_facts: false
+  tasks:
+    - name: "Remove ip default-gateway"
+      cisco.ios.ios_config:
+        lines:
+          - "no ip default-gateway"
+      ignore_errors: true
+
+# ── Phase 3: Rollback All Switches ───────────────────────────
+- name: "ROLLBACK Phase 3 — Reset all switches to baseline"
   hosts: all_switches
   gather_facts: false
   vars:
-    # VLANs to remove (all non-default VLANs we created)
     rollback_vlans:
       - 10
       - 20
@@ -36,8 +109,8 @@
       - 100
 
   tasks:
-    # ── Step 1: Reset trunk interfaces to default ─────────────
-    - name: "Step 1 — Reset trunk interfaces to default"
+    # Reset trunk interfaces to default
+    - name: "Reset trunk interfaces to default"
       cisco.ios.ios_config:
         lines:
           - "default interface {{ item.name }}"
@@ -46,8 +119,8 @@
         label: "Resetting {{ item.name }}"
       ignore_errors: true
 
-    # ── Step 2: Reset access interfaces to default ────────────
-    - name: "Step 2 — Reset access interfaces to default"
+    # Reset access interfaces to default
+    - name: "Reset access interfaces to default"
       cisco.ios.ios_config:
         lines:
           - "default interface {{ item.name }}"
@@ -56,8 +129,8 @@
         label: "Resetting {{ item.name }}"
       ignore_errors: true
 
-    # ── Step 3: Remove non-default VLANs ──────────────────────
-    - name: "Step 3 — Remove VLANs"
+    # Remove non-default VLANs
+    - name: "Remove VLANs"
       cisco.ios.ios_vlans:
         config:
           - vlan_id: "{{ item }}"
@@ -67,16 +140,16 @@
         label: "Removing VLAN {{ item }}"
       ignore_errors: true
 
-    # ── Step 4: Remove STP customizations ─────────────────────
-    - name: "Step 4 — Remove STP customizations"
+    # Remove STP customizations
+    - name: "Remove STP customizations"
       cisco.ios.ios_config:
         lines:
           - "no spanning-tree portfast default"
           - "spanning-tree mode pvst"
       ignore_errors: true
 
-    # ── Step 5: Save clean configuration ──────────────────────
-    - name: "Step 5 — Save clean configuration"
+    # Save clean configuration
+    - name: "Save clean configuration"
       cisco.ios.ios_config:
         save_when: always
 
@@ -84,4 +157,5 @@
       ansible.builtin.debug:
         msg: >-
           {{ inventory_hostname }} — Rollback complete ✓
-          All VLANs, trunks, access ports, and STP settings have been reset.
+          All VLANs, trunks, access ports, STP, L3 routing,
+          and OSPF settings have been reset.

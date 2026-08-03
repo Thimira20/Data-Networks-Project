@@ -4,13 +4,17 @@
 # EE8203/EC8205 Design & Management of Data Networks
 # University of Ruhuna — 8th Semester Project
 #
-# This playbook orchestrates all switch configuration roles
-# in the correct deployment sequence:
-#   1. VLANs → all switches (must exist before trunks/access)
-#   2. Trunking → all switches (establish inter-switch links)
-#   3. Access ports → all switches (assign PCs to VLANs)
-#   4. STP → all switches (set priorities and portfast)
-#   5. Save → write memory on all switches
+# This playbook orchestrates all switch configuration in the
+# correct deployment sequence, respecting the L3 distribution
+# and L2 access layer architecture:
+#
+#   1. VLANs      → all switches   (VLAN database must exist first)
+#   2. Trunking   → all switches   (inter-switch links)
+#   3. Access     → all switches   (PC-facing ports with PortFast)
+#   4. STP        → all switches   (priorities and portfast default)
+#   5. L3 Dist    → dist only      (ip routing, SVIs, OSPF, routes)
+#   6. L2 Gateway → access only    (ip default-gateway)
+#   7. Save       → all switches   (write memory)
 #
 # Usage:
 #   ansible-playbook site.yml              # Full deployment
@@ -28,6 +32,8 @@
     - vlans
 
 # ── Play 2: Configure trunk links on ALL switches ────────────
+# Distribution: trunk downlinks to access switches
+# Access: trunk uplinks to distribution switches (or SW-CORE)
 - name: "Step 2 — Configure trunk ports on all switches"
   hosts: all_switches
   gather_facts: false
@@ -51,8 +57,29 @@
   roles:
     - stp
 
-# ── Play 5: Save configuration to NVRAM ──────────────────────
-- name: "Step 5 — Save configuration (write memory)"
+# ── Play 5: Layer 3 Distribution Switch Configuration ────────
+# ONLY runs on dist_switches (SW-D-DEIE, SW-D-DCEE, SW-D-DMME)
+# Enables ip routing, configures routed uplinks, SVIs, OSPF,
+# and Docker return routes.
+- name: "Step 5 — Configure L3 distribution (ip routing, SVIs, OSPF)"
+  hosts: dist_switches
+  gather_facts: false
+  tags: [l3_distribution]
+  roles:
+    - l3_distribution
+
+# ── Play 6: Layer 2 Access Switch Default Gateway ────────────
+# ONLY runs on access_switches (SW-A-DEIE, SW-A-DCEE, SW-A-DMME, SW-A-DIS)
+# Sets ip default-gateway to local distribution switch.
+- name: "Step 6 — Set L2 access switch default gateways"
+  hosts: access_switches
+  gather_facts: false
+  tags: [l2_gateway]
+  roles:
+    - l2_gateway
+
+# ── Play 7: Save configuration to NVRAM ──────────────────────
+- name: "Step 7 — Save configuration (write memory)"
   hosts: all_switches
   gather_facts: false
   tags: [save]

@@ -1,13 +1,38 @@
 # ============================================================
 # group_vars/dist_switches.yml — Distribution Switch Defaults
 # ============================================================
-# Settings specific to distribution-layer switches:
+# Distribution switches are LAYER 3 MULTILAYER SWITCHES:
 #   SW-D-DEIE, SW-D-DCEE, SW-D-DMME
 #
-# These switches have L3 capabilities (ip routing enabled)
-# and serve as default gateways for their department VLANs.
-# STP priority is set lower to make them root bridge candidates.
+# After L3 conversion (see L3_Distribution_Switch_Conversion_Report.md):
+#   - ip routing is ENABLED
+#   - Uplinks to SW-CORE are ROUTED PORTS (no switchport, /30 IPs)
+#   - Each switch hosts the SVI gateway for its department VLAN
+#   - OSPF process 1 (area 0) advertises department subnets
+#   - ip default-gateway is REMOVED (not valid on L3 switches)
+#   - Static /32 return route for Docker (10.99.99.100)
 # ============================================================
+
+# ----------------------------------------------------------
+# Layer 3 Configuration Flags
+# ----------------------------------------------------------
+ip_routing: true
+remove_default_gateway: true
+
+# ----------------------------------------------------------
+# OSPF Defaults (overridden per-host for router-id & networks)
+# ----------------------------------------------------------
+ospf_process_id: 1
+ospf_area: 0
+
+# ----------------------------------------------------------
+# Docker Host Route (return path for VLAN 99 L2 split)
+# ----------------------------------------------------------
+# After L3 conversion, VLAN 99 is split into separate L2 islands.
+# Each dist switch needs a /32 host route for the Docker container
+# (10.99.99.100) pointing back to SW-CORE's P2P interface.
+# See fixed_ping_from_ubunthu.md — Problem 1.
+docker_host_ip: "10.99.99.100"
 
 # ----------------------------------------------------------
 # STP Priority — Distribution switches should be preferred

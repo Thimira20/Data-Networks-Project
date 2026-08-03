@@ -1,18 +1,69 @@
 # ============================================================
 # host_vars/SW-D-DEIE.yml — Distribution Switch for DEIE
 # ============================================================
-# Topology connections (from GNS3 & trunk_config.md):
+# LAYER 3 MULTILAYER SWITCH
+#
+# Topology connections (from GNS3):
+#   Gi0/0 → SW-CORE (Gi0/0)     [ROUTED PORT — 10.0.10.2/30]
 #   Gi0/2 → SW-A-DEIE (Gi0/1)   [trunk downlink]
 #
-# Note: Uplink to SW-CORE (Gi0/0) is converted to a Layer 3
-#       routed port (10.0.10.2/30) per L3 conversion report.
+# L3 Responsibilities:
+#   - Department gateway: VLAN 10 SVI (10.10.10.1/24)
+#   - MGMT SVI: VLAN 99 (10.99.99.11/24)
+#   - OSPF area 0 with SW-CORE
+#   - Static return route for Docker (10.99.99.100)
 # ============================================================
 
+# ----------------------------------------------------------
+# Routed Uplink to SW-CORE (Layer 3 — no switchport)
+# ----------------------------------------------------------
+routed_uplink:
+  name: GigabitEthernet0/0
+  description: ROUTED_LINK_TO_SW-CORE
+  ip_address: "10.0.10.2"
+  subnet_mask: "255.255.255.252"
+
+# ----------------------------------------------------------
+# Trunk Downlink to Access Switch (Layer 2)
+# ----------------------------------------------------------
 trunk_interfaces:
   - name: GigabitEthernet0/2
     description: TRUNK_TO_SW-A-DEIE
     native_vlan: 100
     allowed_vlans: "10,20,30,40,99,100"
+
+# ----------------------------------------------------------
+# Department VLAN SVI (this switch is the gateway)
+# ----------------------------------------------------------
+department_svi:
+  vlan_id: 10
+  description: GW_VLAN_DEIE
+  ip_address: "10.10.10.1"
+  subnet_mask: "255.255.255.0"
+
+# ----------------------------------------------------------
+# Management VLAN 99 SVI
+# ----------------------------------------------------------
+mgmt_svi:
+  vlan_id: 99
+  description: MGMT_INTERFACE
+  ip_address: "10.99.99.11"
+  subnet_mask: "255.255.255.0"
+
+# ----------------------------------------------------------
+# OSPF Configuration
+# ----------------------------------------------------------
+ospf_router_id: "3.3.3.11"
+ospf_networks:
+  - { network: "10.0.10.0", wildcard: "0.0.0.3", area: 0 }
+  - { network: "10.10.10.0", wildcard: "0.0.0.255", area: 0 }
+  - { network: "10.99.99.0", wildcard: "0.0.0.255", area: 0 }
+ospf_active_interface: GigabitEthernet0/0
+
+# ----------------------------------------------------------
+# Static Route — Docker return path (VLAN 99 L2 split fix)
+# ----------------------------------------------------------
+docker_return_route_nexthop: "10.0.10.1"
 
 # No access ports on distribution switches
 access_interfaces: []

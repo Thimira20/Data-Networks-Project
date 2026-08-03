@@ -6,14 +6,13 @@
 # hardcoded in any script.
 #
 # ⚠️  IMPORTANT — INTERFACE NAMES:
-#   Your GNS3 c7200 routers use "slot/port" naming:
-#     - PA-GE in slot 0 → GigabitEthernet0/0
-#     - PA-GE in slot 1 → GigabitEthernet1/0
-#   This is DIFFERENT from Packet Tracer ISR4331 (Gi0/0/0).
-#
-#   Before running scripts, SSH into each router in GNS3 and run:
-#     show ip interface brief
-#   Then update the interface names below to match.
+#   R-CORE uses Cisco c7200 with PA-GE cards:
+#     - GigabitEthernet0/0 → SW-CORE
+#     - GigabitEthernet0/1 → R-EDGE
+#   R-EDGE uses Cisco c7200 with PA-FE (FastEthernet) cards:
+#     - FastEthernet0/0 → R-CORE (inside)
+#     - FastEthernet1/0 → Internet NAT cloud (outside)
+#   (Confirmed in fixed_ping_from_ubunthu.md)
 #
 #   IOSvL2 switches use GigabitEthernet0/X — these should
 #   already match your existing GNS3 config.
@@ -36,11 +35,11 @@ routers:
     device_type: "cisco_ios"      # c7200 uses standard cisco_ios
     role: "core_router"
     interfaces:
-      - name: "GigabitEthernet0/0"        # ← Verify with 'show ip int brief'
+      - name: "GigabitEthernet0/0"
         description: "LINK_TO_SW-CORE"
         ip_address: "10.0.0.2"
         subnet_mask: "255.255.255.252"
-      - name: "GigabitEthernet0/1"        # ← Verify with 'show ip int brief'
+      - name: "GigabitEthernet0/1"
         description: "LINK_TO_R-EDGE"
         ip_address: "10.0.1.1"
         subnet_mask: "255.255.255.252"
@@ -50,18 +49,23 @@ routers:
       networks:
         - { network: "10.0.0.0", wildcard: "0.0.0.3", area: 0 }
         - { network: "10.0.1.0", wildcard: "0.0.0.3", area: 0 }
+      default_originate: true     # Propagate default route from R-EDGE
+    # Default route to R-EDGE for internet access
+    static_routes:
+      - { destination: "0.0.0.0", mask: "0.0.0.0", next_hop: "10.0.1.1" }
 
   - hostname: "R-EDGE"
     host: "10.0.1.2"              # Reachable from VLAN 99 via SW-Core → R-CORE routing
     device_type: "cisco_ios"
     role: "edge_router"
     interfaces:
-      - name: "GigabitEthernet0/0"        # ← Verify with 'show ip int brief'
+      # FastEthernet (not GigabitEthernet) — confirmed in fixed_ping_from_ubunthu.md
+      - name: "FastEthernet0/0"
         description: "LINK_TO_R-CORE"
         ip_address: "10.0.1.2"
         subnet_mask: "255.255.255.252"
         nat_direction: "inside"
-      - name: "GigabitEthernet0/1"        # ← Verify with 'show ip int brief'
+      - name: "FastEthernet1/0"
         description: "LINK_TO_INTERNET_ISP"
         ip_address: "dhcp"
         subnet_mask: ""
@@ -73,15 +77,22 @@ routers:
         - { network: "10.0.1.0", wildcard: "0.0.0.3", area: 0 }
       default_originate: true
     nat:
-      acl_name: "NAT_ACL"
+      acl_number: 100             # Using numbered ACL (per fixed_ping doc)
       permitted_networks:
+        - { network: "10.99.99.0", wildcard: "0.0.0.255" }    # MGMT VLAN gets internet
         - { network: "10.10.10.0", wildcard: "0.0.0.255" }    # VLAN_DEIE gets internet
         - { network: "10.10.20.0", wildcard: "0.0.0.255" }    # VLAN_DCEE gets internet
-      outside_interface: "GigabitEthernet0/1"
+      outside_interface: "FastEthernet1/0"
+    # Static aggregate route for all internal traffic via R-CORE
+    static_routes:
+      - { destination: "10.0.0.0", mask: "255.0.0.0", next_hop: "10.0.1.2" }
 
 # ----------------------------------------------------------
 # L3 DISTRIBUTION SWITCHES (IOSvL2 in GNS3, L3 mode)
 # ----------------------------------------------------------
+# These are multilayer switches with ip routing enabled.
+# Managed by Ansible (ansible-project/), listed here for
+# SNMP push and verification scripts.
 l3_switches:
   - hostname: "SW-Core"
     host: "10.99.99.1"

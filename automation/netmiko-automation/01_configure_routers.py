@@ -282,28 +282,58 @@ def build_nat_commands(nat_config):
     Build NAT overload (PAT) configuration commands from inventory data.
     Only applicable to R-EDGE.
     
+    Supports both named ACLs (acl_name) and numbered ACLs (acl_number).
+    The fixed_ping_from_ubunthu.md uses numbered ACL 100.
+    
     Args:
-        nat_config: Dict with keys: acl_name, permitted_networks,
-                    outside_interface
+        nat_config: Dict with keys: acl_name or acl_number,
+                    permitted_networks, outside_interface
     
     Returns:
         list: IOS CLI commands for NAT configuration
     """
-    acl_name = nat_config["acl_name"]
-    commands = [f"ip access-list standard {acl_name}"]
-    commands.append(f" remark --- NAT: Only permitted departments get internet ---")
+    commands = []
     
-    for net_entry in nat_config["permitted_networks"]:
-        commands.append(f" permit {net_entry['network']} {net_entry['wildcard']}")
-    
-    commands.append("exit")
+    # Support both named and numbered ACLs
+    if "acl_number" in nat_config:
+        acl_id = str(nat_config["acl_number"])
+        for net_entry in nat_config["permitted_networks"]:
+            commands.append(
+                f"access-list {acl_id} permit ip "
+                f"{net_entry['network']} {net_entry['wildcard']} any"
+            )
+    else:
+        acl_id = nat_config["acl_name"]
+        commands.append(f"ip access-list standard {acl_id}")
+        commands.append(" remark --- NAT: Only permitted departments get internet ---")
+        for net_entry in nat_config["permitted_networks"]:
+            commands.append(f" permit {net_entry['network']} {net_entry['wildcard']}")
+        commands.append("exit")
     
     # NAT overload rule — maps internal IPs to the outside interface IP
     outside_if = nat_config["outside_interface"]
     commands.append(
-        f"ip nat inside source list {acl_name} "
+        f"ip nat inside source list {acl_id} "
         f"interface {outside_if} overload"
     )
+    return commands
+
+
+def build_static_route_commands(static_routes):
+    """
+    Build static route configuration commands from inventory data.
+    
+    Args:
+        static_routes: List of dicts with keys: destination, mask, next_hop
+    
+    Returns:
+        list: IOS CLI commands for static routes
+    """
+    commands = []
+    for route in static_routes:
+        commands.append(
+            f"ip route {route['destination']} {route['mask']} {route['next_hop']}"
+        )
     return commands
 
 
@@ -376,9 +406,9 @@ def configure_router(device, credentials, log_file):
         # ── Step 4: Configure NAT (R-EDGE only) ──────────────
         nat_config = device.get("nat")
         if nat_config:
-            check_str = nat_config["acl_name"]
-            if check_config_exists(connection, check_str):
-                log(log_file, f"  → NAT ({check_str}) already configured — SKIPPING (idempotent)")
+            check_str = str(nat_config.get("acl_number", nat_config.get("acl_name", "")))
+            if check_config_exists(connection, f"ip nat inside source list {check_str}"):
+                log(log_file, f"  → NAT (ACL {check_str}) already configured — SKIPPING (idempotent)")
                 sections_skipped += 1
             else:
                 log(log_file, f"  → Configuring NAT overload (PAT)...")
@@ -386,6 +416,22 @@ def configure_router(device, credentials, log_file):
                 output = connection.send_config_set(commands)
                 log(log_file, f"    Device output:\n{output}", also_print=False)
                 log(log_file, f"  ✓ NAT configured successfully")
+                changes_made += 1
+
+        # ── Step 4b: Configure Static Routes ──────────────────
+        static_routes = device.get("static_routes")
+        if static_routes:
+            first_route = static_routes[0]
+            check_str = f"ip route {first_route['destination']}"
+            if check_config_exists(connection, check_str):
+                log(log_file, f"  → Static routes already configured — SKIPPING (idempotent)")
+                sections_skipped += 1
+            else:
+                log(log_file, f"  → Configuring static routes...")
+                commands = build_static_route_commands(static_routes)
+                output = connection.send_config_set(commands)
+                log(log_file, f"    Device output:\n{output}", also_print=False)
+                log(log_file, f"  ✓ Static routes configured successfully")
                 changes_made += 1
 
         # ── Step 5: Deploy Router ACLs ────────────────────────
