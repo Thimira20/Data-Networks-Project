@@ -42,3 +42,46 @@ PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
 3 packets transmitted, 0 received, 100% packet loss, time 2062ms
 
 (venv) root@UbuntuDockerGuest-1:~/network-project/Data-Networks-Project/automation/netmiko-automation# 
+
+
+
+
+
+
+
+# Can you reach SW-CORE? (this should work since Ansible works)
+ping -c 3 10.99.99.1
+
+# Can you reach R-CORE?
+ping -c 3 10.0.0.2
+
+# Can you reach R-EDGE?
+ping -c 3 10.0.1.2
+
+
+ip route show
+# You need routes like:
+#   10.0.0.0/30 via 10.99.99.1
+#   10.0.1.0/30 via 10.99.99.1
+
+
+ip route add 10.0.0.0/30 via 10.99.99.1
+ip route add 10.0.1.0/30 via 10.99.99.1
+
+
+show ip ssh
+show ip interface brief
+
+
+show ip route 10.0.0.0
+show ip ospf neighbor
+
+
+
+
+
+
+
+
+
+
