@@ -1,0 +1,21 @@
+# ============================================================
+# host_vars/SW-D-DCEE.yml — Distribution Switch for DCEE
+# ============================================================
+# Topology connections (from GNS3):
+#   Gi0/2 → SW-CORE (Gi0/2)     [trunk uplink]
+#   Gi0/0 → SW-A-DCEE (Gi0/0)   [trunk downlink]
+# ============================================================
+
+trunk_interfaces:
+  - name: GigabitEthernet0/2
+    description: TRUNK_TO_SW-CORE
+    native_vlan: 100
+    allowed_vlans: "10,20,30,40,99,100"
+
+  - name: GigabitEthernet0/0
+    description: TRUNK_TO_SW-A-DCEE
+    native_vlan: 100
+    allowed_vlans: "10,20,30,40,99,100"
+
+# No access ports on distribution switches
+access_interfaces: []

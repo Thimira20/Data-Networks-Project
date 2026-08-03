@@ -1,0 +1,49 @@
+# ============================================================
+# Role: access_ports — Assign access ports to department VLANs
+# ============================================================
+# This role configures switch ports connected to end-user PCs
+# as access ports in the correct department VLAN, with PortFast
+# enabled for fast link-up.
+#
+# Variables used (from host_vars/<switch>.yml):
+#   access_interfaces: list of access port definitions
+#     - name: interface name (e.g., GigabitEthernet0/0)
+#     - description: port description (e.g., PC1_DEIE_DEPT)
+#     - access_vlan: VLAN ID to assign
+#     - portfast: true/false
+# ============================================================
+---
+- name: Display access port configuration task
+  ansible.builtin.debug:
+    msg: "Configuring {{ access_interfaces | length }} access port(s) on {{ inventory_hostname }}"
+  when: access_interfaces is defined and access_interfaces | length > 0
+
+- name: Skip if no access interfaces defined
+  ansible.builtin.debug:
+    msg: "No access interfaces defined for {{ inventory_hostname }} — skipping"
+  when: access_interfaces is not defined or access_interfaces | length == 0
+
+- name: Configure access ports with VLAN assignment and PortFast
+  cisco.ios.ios_config:
+    lines:
+      - description {{ item.description }}
+      - switchport mode access
+      - switchport access vlan {{ item.access_vlan }}
+      - "{{ 'spanning-tree portfast' if item.portfast | default(false) else '' }}"
+      - no shutdown
+    parents: "interface {{ item.name }}"
+  loop: "{{ access_interfaces | default([]) }}"
+  loop_control:
+    label: "{{ item.name }} → VLAN {{ item.access_vlan }} ({{ item.description }})"
+  register: access_result
+
+- name: Report access port configuration status
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.item.name }} → VLAN {{ item.item.access_vlan }}
+      ({{ item.item.description }}) —
+      {{ 'CHANGED' if item.changed else 'OK (already configured)' }}
+  loop: "{{ access_result.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: access_result is defined

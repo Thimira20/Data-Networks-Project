@@ -1,0 +1,25 @@
+# ============================================================
+# host_vars/SW-A-DEIE.yml — Access Switch for DEIE Department
+# ============================================================
+# Topology connections (from GNS3):
+#   Gi0/0 → PC1 (e0)              [access VLAN 10]
+#   Gi0/2 → PC2 (e0)              [access VLAN 10]
+#   Gi0/1 → SW-D-DEIE (Gi0/2)     [trunk uplink]
+# ============================================================
+
+trunk_interfaces:
+  - name: GigabitEthernet0/1
+    description: TRUNK_TO_SW-D-DEIE
+    native_vlan: 100
+    allowed_vlans: "10,20,30,40,99,100"
+
+access_interfaces:
+  - name: GigabitEthernet0/0
+    description: PC1_DEIE_DEPT
+    access_vlan: 10
+    portfast: true
+
+  - name: GigabitEthernet0/2
+    description: PC2_DEIE_DEPT
+    access_vlan: 10
+    portfast: true

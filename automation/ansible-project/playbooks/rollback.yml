@@ -1,0 +1,87 @@
+# ============================================================
+# playbooks/rollback.yml — Rollback to Clean Baseline
+# ============================================================
+# EE8203/EC8205 Design & Management of Data Networks
+# University of Ruhuna — 8th Semester Project
+#
+# Purpose:
+#   Restores all switches to a clean baseline by:
+#     1. Removing non-default VLANs (10, 20, 30, 40, 99, 100)
+#     2. Resetting configured interfaces to default
+#     3. Removing STP customizations
+#     4. Saving the clean configuration
+#
+# Target execution time: < 5 minutes
+#
+# Usage:
+#   ansible-playbook playbooks/rollback.yml
+#
+# ⚠ WARNING: This removes ALL automation-applied configuration!
+#   Switches will lose VLAN assignments, trunk configs, and
+#   access port settings. Management connectivity via VLAN 99
+#   will be disrupted.
+# ============================================================
+---
+- name: "ROLLBACK — Restore switches to clean baseline"
+  hosts: all_switches
+  gather_facts: false
+  vars:
+    # VLANs to remove (all non-default VLANs we created)
+    rollback_vlans:
+      - 10
+      - 20
+      - 30
+      - 40
+      - 99
+      - 100
+
+  tasks:
+    # ── Step 1: Reset trunk interfaces to default ─────────────
+    - name: "Step 1 — Reset trunk interfaces to default"
+      cisco.ios.ios_config:
+        lines:
+          - "default interface {{ item.name }}"
+      loop: "{{ trunk_interfaces | default([]) }}"
+      loop_control:
+        label: "Resetting {{ item.name }}"
+      ignore_errors: true
+
+    # ── Step 2: Reset access interfaces to default ────────────
+    - name: "Step 2 — Reset access interfaces to default"
+      cisco.ios.ios_config:
+        lines:
+          - "default interface {{ item.name }}"
+      loop: "{{ access_interfaces | default([]) }}"
+      loop_control:
+        label: "Resetting {{ item.name }}"
+      ignore_errors: true
+
+    # ── Step 3: Remove non-default VLANs ──────────────────────
+    - name: "Step 3 — Remove VLANs"
+      cisco.ios.ios_vlans:
+        config:
+          - vlan_id: "{{ item }}"
+        state: deleted
+      loop: "{{ rollback_vlans }}"
+      loop_control:
+        label: "Removing VLAN {{ item }}"
+      ignore_errors: true
+
+    # ── Step 4: Remove STP customizations ─────────────────────
+    - name: "Step 4 — Remove STP customizations"
+      cisco.ios.ios_config:
+        lines:
+          - "no spanning-tree portfast default"
+          - "spanning-tree mode pvst"
+      ignore_errors: true
+
+    # ── Step 5: Save clean configuration ──────────────────────
+    - name: "Step 5 — Save clean configuration"
+      cisco.ios.ios_config:
+        save_when: always
+
+    - name: Rollback complete
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} — Rollback complete ✓
+          All VLANs, trunks, access ports, and STP settings have been reset.

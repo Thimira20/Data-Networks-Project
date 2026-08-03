@@ -1,0 +1,29 @@
+# ============================================================
+# EE8203 Network Automation — Ansible Switch Inventory
+# ============================================================
+# Defines switch groups for targeted playbook execution.
+#
+# Groups:
+#   dist_switches  → SW-D-DEIE, SW-D-DCEE, SW-D-DMME
+#   access_switches → SW-A-DEIE, SW-A-DCEE, SW-A-DMME, SW-A-DIS
+#   all_switches    → all of the above (parent group)
+#
+# NOTE: SW-A-DIS connects directly to SW-CORE (no SW-D-DIS).
+#       SW-CORE is NOT managed by Ansible — it is handled
+#       manually (L3 routing, ACLs, OSPF already configured).
+# ============================================================
+
+[dist_switches]
+SW-D-DEIE  ansible_host=10.99.99.11
+SW-D-DCEE  ansible_host=10.99.99.12
+SW-D-DMME  ansible_host=10.99.99.13
+
+[access_switches]
+SW-A-DEIE  ansible_host=10.99.99.21
+SW-A-DCEE  ansible_host=10.99.99.22
+SW-A-DMME  ansible_host=10.99.99.23
+SW-A-DIS   ansible_host=10.99.99.24
+
+[all_switches:children]
+dist_switches
+access_switches
