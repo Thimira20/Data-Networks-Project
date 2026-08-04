@@ -1,0 +1,672 @@
+============================================================
+  NETMIKO VERIFICATION SCRIPT
+  EE8203 — Post-Configuration Verification
+  Timestamp: 2026-08-04_22-22-33
+============================================================
+[22:22:33] 
+✓ Inventory loaded: /root/network-project/Data-Networks-Project/automation/netmiko-automation/inventory.yaml
+[22:22:33] 
+════════════════════════════════════════════════════════════
+[22:22:33]   SECTION 1: ROUTER VERIFICATION
+[22:22:33] ════════════════════════════════════════════════════════════
+
+[22:22:33] Connecting to R-CORE (10.0.0.2)...
+[22:22:33]   ✓ Connected to R-CORE
+[22:22:33] 
+  ┌─ Interface Status: 'show ip interface brief'
+  │
+  │  Interface                  IP-Address      OK? Method Status                Protocol
+  │  FastEthernet0/0            10.0.1.2        YES NVRAM  up                    up      
+  │  FastEthernet1/0            10.0.0.2        YES manual up                    up      
+  │  FastEthernet1/1            unassigned      YES NVRAM  administratively down down    
+  │  NVI0                       10.0.1.2        YES unset  up                    up
+  └───────────────────────────────────────────────────
+[22:22:33] 
+  ┌─ OSPF Adjacencies: 'show ip ospf neighbor'
+  │
+  │  Neighbor ID     Pri   State           Dead Time   Address         Interface
+  │  1.1.1.1           1   FULL/DR         00:00:33    10.0.0.1        FastEthernet1/0
+  │  10.0.1.1          1   FULL/BDR        00:00:37    10.0.1.1        FastEthernet0/0
+  └───────────────────────────────────────────────────
+[22:22:34] 
+  ┌─ OSPF Learned Routes: 'show ip route ospf'
+  │
+  │  10.0.0.0/8 is variably subnetted, 10 subnets, 2 masks
+  │  O       10.0.10.0/30 [110/2] via 10.0.0.1, 00:44:26, FastEthernet1/0
+  │  O       10.99.99.0/24 [110/2] via 10.0.0.1, 00:44:26, FastEthernet1/0
+  │  O       10.10.10.0/24 [110/3] via 10.0.0.1, 00:44:26, FastEthernet1/0
+  │  O       10.10.20.0/24 [110/3] via 10.0.0.1, 00:44:26, FastEthernet1/0
+  │  O       10.0.30.0/30 [110/2] via 10.0.0.1, 00:44:26, FastEthernet1/0
+  │  O       10.10.30.0/24 [110/3] via 10.0.0.1, 00:44:26, FastEthernet1/0
+  │  O       10.0.20.0/30 [110/2] via 10.0.0.1, 00:44:26, FastEthernet1/0
+  │  O       10.10.40.0/24 [110/2] via 10.0.0.1, 00:44:26, FastEthernet1/0
+  └───────────────────────────────────────────────────
+[22:22:34] 
+  ┌─ Access Control Lists: 'show access-lists'
+  │
+  │  Extended IP access list ACL-INFRASTRUCTURE-PROTECT
+  │      10 permit ospf any any
+  │      20 permit tcp 10.99.99.0 0.0.0.255 any eq 22
+  │      30 permit udp host 10.10.40.100 any eq snmp
+  │      40 permit icmp any any
+  │      50 permit ip 10.0.0.0 0.255.255.255 any
+  │      60 deny ip any any log
+  └───────────────────────────────────────────────────
+[22:22:34] 
+  ┌─ SNMP Status: 'show snmp'
+  │
+  │  Chassis: 4279256517
+  │  0 SNMP packets input
+  │      0 Bad SNMP version errors
+  │      0 Unknown community name
+  │      0 Illegal operation for community name supplied
+  │      0 Encoding errors
+  │      0 Number of requested variables
+  │      0 Number of altered variables
+  │      0 Get-request PDUs
+  │      0 Get-next PDUs
+  │      0 Set-request PDUs
+  │      0 Input queue packet drops (Maximum queue size 1000)
+  │  2 SNMP packets output
+  │      0 Too big errors (Maximum packet size 1500)
+  │      0 No such name errors
+  │      0 Bad values errors
+  │      0 General errors
+  │      0 Response PDUs
+  │      2 Trap PDUs
+  │  SNMP Dispatcher:
+  │     queue 0/75 (current/max), 0 dropped
+  │  SNMP Engine:
+  │     queue 0/1000 (current/max), 0 dropped
+  │  SNMP Trap Queue: 0 dropped due to resource failure.
+  │  
+  │  SNMP logging: enabled
+  │      Logging to 10.10.40.100.162, 0/10, 2 sent, 0 dropped.
+  └───────────────────────────────────────────────────
+[22:22:34] 
+  ✓ Verification complete for R-CORE
+
+[22:22:34] Connecting to R-EDGE (10.0.1.1)...
+[22:22:35]   ✓ Connected to R-EDGE
+[22:22:35] 
+  ┌─ Interface Status: 'show ip interface brief'
+  │
+  │  Interface                  IP-Address      OK? Method Status                Protocol
+  │  FastEthernet0/0            10.0.1.1        YES NVRAM  up                    up      
+  │  FastEthernet1/0            192.168.42.239  YES DHCP   up                    up      
+  │  FastEthernet1/1            unassigned      YES NVRAM  administratively down down    
+  │  NVI0                       10.0.1.1        YES unset  up                    up
+  └───────────────────────────────────────────────────
+[22:22:35] 
+  ┌─ OSPF Adjacencies: 'show ip ospf neighbor'
+  │
+  │  Neighbor ID     Pri   State           Dead Time   Address         Interface
+  │  10.0.1.2          1   FULL/DR         00:00:34    10.0.1.2        FastEthernet0/0
+  └───────────────────────────────────────────────────
+[22:22:35] 
+  ┌─ OSPF Learned Routes: 'show ip route ospf'
+  │
+  │  10.0.0.0/8 is variably subnetted, 11 subnets, 3 masks
+  │  O       10.0.10.0/30 [110/3] via 10.0.1.2, 00:44:27, FastEthernet0/0
+  │  O       10.99.99.0/24 [110/3] via 10.0.1.2, 00:44:27, FastEthernet0/0
+  │  O       10.10.10.0/24 [110/4] via 10.0.1.2, 00:44:27, FastEthernet0/0
+  │  O       10.0.0.0/30 [110/2] via 10.0.1.2, 00:40:12, FastEthernet0/0
+  │  O       10.10.20.0/24 [110/4] via 10.0.1.2, 00:44:27, FastEthernet0/0
+  │  O       10.0.30.0/30 [110/3] via 10.0.1.2, 00:44:27, FastEthernet0/0
+  │  O       10.10.30.0/24 [110/4] via 10.0.1.2, 00:44:27, FastEthernet0/0
+  │  O       10.0.20.0/30 [110/3] via 10.0.1.2, 00:44:27, FastEthernet0/0
+  │  O       10.10.40.0/24 [110/3] via 10.0.1.2, 00:44:27, FastEthernet0/0
+  └───────────────────────────────────────────────────
+[22:22:35] 
+  ┌─ NAT Translation Table: 'show ip nat translations'
+  │
+  │  (no output)
+  └───────────────────────────────────────────────────
+[22:22:35] 
+  ┌─ NAT Statistics: 'show ip nat statistics'
+  │
+  │  Total active translations: 0 (0 static, 0 dynamic; 0 extended)
+  │  Peak translations: 24, occurred 3d08h ago
+  │  Outside interfaces:
+  │    FastEthernet1/0
+  │  Inside interfaces: 
+  │    FastEthernet0/0
+  │  Hits: 1332159  Misses: 0
+  │  CEF Translated packets: 1331918, CEF Punted packets: 228
+  │  Expired translations: 166
+  │  Dynamic mappings:
+  │  -- Inside Source
+  │  [Id: 1] access-list 100 interface FastEthernet1/0 refcount 0
+  │  Appl doors: 0
+  │  Normal doors: 0
+  │  Queued Packets: 0
+  └───────────────────────────────────────────────────
+[22:22:35] 
+  ┌─ Access Control Lists: 'show access-lists'
+  │
+  │  Extended IP access list 100
+  │      10 permit ip 10.99.99.0 0.0.0.255 any (166 matches)
+  │      20 permit ip 10.10.10.0 0.0.0.255 any
+  │      30 permit ip 10.10.20.0 0.0.0.255 any
+  │  Extended IP access list ACL-WAN-INBOUND
+  │      10 deny ip 10.0.0.0 0.255.255.255 any
+  │      20 deny ip 172.16.0.0 0.15.255.255 any
+  │      30 deny ip 192.168.0.0 0.0.255.255 any
+  │      40 deny ip 127.0.0.0 0.255.255.255 any
+  │      50 permit ip any any
+  └───────────────────────────────────────────────────
+[22:22:35] 
+  ┌─ SNMP Status: 'show snmp'
+  │
+  │  Chassis: 4279256517
+  │  0 SNMP packets input
+  │      0 Bad SNMP version errors
+  │      0 Unknown community name
+  │      0 Illegal operation for community name supplied
+  │      0 Encoding errors
+  │      0 Number of requested variables
+  │      0 Number of altered variables
+  │      0 Get-request PDUs
+  │      0 Get-next PDUs
+  │      0 Set-request PDUs
+  │      0 Input queue packet drops (Maximum queue size 1000)
+  │  2 SNMP packets output
+  │      0 Too big errors (Maximum packet size 1500)
+  │      0 No such name errors
+  │      0 Bad values errors
+  │      0 General errors
+  │      0 Response PDUs
+  │      2 Trap PDUs
+  │  SNMP Dispatcher:
+  │     queue 0/75 (current/max), 0 dropped
+  │  SNMP Engine:
+  │     queue 0/1000 (current/max), 0 dropped
+  │  SNMP Trap Queue: 0 dropped due to resource failure.
+  │  
+  │  SNMP logging: enabled
+  │      Logging to 10.10.40.100.162, 0/10, 2 sent, 0 dropped.
+  └───────────────────────────────────────────────────
+[22:22:35] 
+  ✓ Verification complete for R-EDGE
+
+[22:22:35] 
+════════════════════════════════════════════════════════════
+[22:22:35]   SECTION 2: L3 SWITCH VERIFICATION
+[22:22:35] ════════════════════════════════════════════════════════════
+
+[22:22:35] Connecting to SW-Core (10.99.99.1)...
+[22:22:36]   ✓ Connected to SW-Core
+[22:22:36] 
+  ┌─ SNMP Status: 'show snmp'
+  │
+  │  Chassis: 9RJBUZS3UZQ
+  │  0 SNMP packets input
+  │      0 Bad SNMP version errors
+  │      0 Unknown community name
+  │      0 Illegal operation for community name supplied
+  │      0 Encoding errors
+  │      0 Number of requested variables
+  │      0 Number of altered variables
+  │      0 Get-request PDUs
+  │      0 Get-next PDUs
+  │      0 Set-request PDUs
+  │      0 Input queue packet drops (Maximum queue size 1000)
+  │  0 SNMP packets output
+  │      0 Too big errors (Maximum packet size 1500)
+  │      0 No such name errors
+  │      0 Bad values errors
+  │      0 General errors
+  │      0 Response PDUs
+  │      0 Trap PDUs
+  │  SNMP global trap: enabled
+  │  
+  │  SNMP logging: enabled
+  │      Logging to 10.10.40.100.162, 0/10, 0 sent, 0 dropped.
+  └───────────────────────────────────────────────────
+[22:22:36] 
+  ┌─ SNMP Communities: 'show snmp community'
+  │
+  │  Community name: private
+  │  Community Index: private
+  │  Community SecurityName: private
+  │  storage-type: nonvolatile	 active
+  │  
+  │  
+  │  Community name: public
+  │  Community Index: public
+  │  Community SecurityName: public
+  │  storage-type: nonvolatile	 active
+  └───────────────────────────────────────────────────
+[22:22:36] 
+  ┌─ Interface Status: 'show ip interface brief'
+  │
+  │  Interface              IP-Address      OK? Method Status                Protocol
+  │  GigabitEthernet0/0     10.0.10.1       YES NVRAM  up                    up      
+  │  GigabitEthernet0/1     10.0.0.1        YES NVRAM  up                    up      
+  │  GigabitEthernet0/2     10.0.20.1       YES NVRAM  up                    up      
+  │  GigabitEthernet0/3     10.0.30.1       YES NVRAM  up                    up      
+  │  GigabitEthernet1/0     unassigned      YES unset  up                    up      
+  │  GigabitEthernet1/1     unassigned      YES unset  up                    up      
+  │  GigabitEthernet1/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/3     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/3     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/3     unassigned      YES unset  down                  down    
+  │  Vlan40                 10.10.40.1      YES NVRAM  up                    up      
+  │  Vlan99                 10.99.99.1      YES NVRAM  up                    up
+  └───────────────────────────────────────────────────
+[22:22:36] 
+  ✓ Verification complete for SW-Core
+
+[22:22:36] Connecting to SW-D-DEIE (10.99.99.11)...
+[22:22:37]   ✓ Connected to SW-D-DEIE
+[22:22:37] 
+  ┌─ SNMP Status: 'show snmp'
+  │
+  │  Chassis: 9V62UZX4BJC
+  │  0 SNMP packets input
+  │      0 Bad SNMP version errors
+  │      0 Unknown community name
+  │      0 Illegal operation for community name supplied
+  │      0 Encoding errors
+  │      0 Number of requested variables
+  │      0 Number of altered variables
+  │      0 Get-request PDUs
+  │      0 Get-next PDUs
+  │      0 Set-request PDUs
+  │      0 Input queue packet drops (Maximum queue size 1000)
+  │  0 SNMP packets output
+  │      0 Too big errors (Maximum packet size 1500)
+  │      0 No such name errors
+  │      0 Bad values errors
+  │      0 General errors
+  │      0 Response PDUs
+  │      0 Trap PDUs
+  │  SNMP global trap: enabled
+  │  
+  │  SNMP logging: enabled
+  │      Logging to 10.10.40.100.162, 0/10, 0 sent, 0 dropped.
+  └───────────────────────────────────────────────────
+[22:22:37] 
+  ┌─ SNMP Communities: 'show snmp community'
+  │
+  │  Community name: private
+  │  Community Index: private
+  │  Community SecurityName: private
+  │  storage-type: nonvolatile	 active
+  │  
+  │  
+  │  Community name: public
+  │  Community Index: public
+  │  Community SecurityName: public
+  │  storage-type: nonvolatile	 active
+  └───────────────────────────────────────────────────
+[22:22:37] 
+  ┌─ Interface Status: 'show ip interface brief'
+  │
+  │  Interface              IP-Address      OK? Method Status                Protocol
+  │  GigabitEthernet0/0     10.0.10.2       YES NVRAM  up                    up      
+  │  GigabitEthernet0/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet0/2     unassigned      YES unset  up                    up      
+  │  GigabitEthernet0/3     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/3     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/3     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/3     unassigned      YES unset  down                  down    
+  │  Vlan10                 10.10.10.1      YES NVRAM  up                    up      
+  │  Vlan99                 10.99.99.11     YES NVRAM  up                    up
+  └───────────────────────────────────────────────────
+[22:22:37] 
+  ✓ Verification complete for SW-D-DEIE
+
+[22:22:37] Connecting to SW-D-DCEE (10.99.99.12)...
+[22:22:38]   ✓ Connected to SW-D-DCEE
+[22:22:38] 
+  ┌─ SNMP Status: 'show snmp'
+  │
+  │  Chassis: 96DZGEYUWTB
+  │  0 SNMP packets input
+  │      0 Bad SNMP version errors
+  │      0 Unknown community name
+  │      0 Illegal operation for community name supplied
+  │      0 Encoding errors
+  │      0 Number of requested variables
+  │      0 Number of altered variables
+  │      0 Get-request PDUs
+  │      0 Get-next PDUs
+  │      0 Set-request PDUs
+  │      0 Input queue packet drops (Maximum queue size 1000)
+  │  0 SNMP packets output
+  │      0 Too big errors (Maximum packet size 1500)
+  │      0 No such name errors
+  │      0 Bad values errors
+  │      0 General errors
+  │      0 Response PDUs
+  │      0 Trap PDUs
+  │  SNMP global trap: enabled
+  │  
+  │  SNMP logging: enabled
+  │      Logging to 10.10.40.100.162, 0/10, 0 sent, 0 dropped.
+  └───────────────────────────────────────────────────
+[22:22:38] 
+  ┌─ SNMP Communities: 'show snmp community'
+  │
+  │  Community name: private
+  │  Community Index: private
+  │  Community SecurityName: private
+  │  storage-type: nonvolatile	 active
+  │  
+  │  
+  │  Community name: public
+  │  Community Index: public
+  │  Community SecurityName: public
+  │  storage-type: nonvolatile	 active
+  └───────────────────────────────────────────────────
+[22:22:38] 
+  ┌─ Interface Status: 'show ip interface brief'
+  │
+  │  Interface              IP-Address      OK? Method Status                Protocol
+  │  GigabitEthernet0/0     unassigned      YES unset  up                    up      
+  │  GigabitEthernet0/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet0/2     10.0.20.2       YES NVRAM  up                    up      
+  │  GigabitEthernet0/3     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/3     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/3     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/3     unassigned      YES unset  down                  down    
+  │  Vlan20                 10.10.20.1      YES NVRAM  up                    up      
+  │  Vlan99                 10.99.99.12     YES NVRAM  up                    up
+  └───────────────────────────────────────────────────
+[22:22:38] 
+  ✓ Verification complete for SW-D-DCEE
+
+[22:22:38] Connecting to SW-D-DMME (10.99.99.13)...
+[22:22:39]   ✓ Connected to SW-D-DMME
+[22:22:39] 
+  ┌─ SNMP Status: 'show snmp'
+  │
+  │  Chassis: 9ASQ7RVHRZF
+  │  0 SNMP packets input
+  │      0 Bad SNMP version errors
+  │      0 Unknown community name
+  │      0 Illegal operation for community name supplied
+  │      0 Encoding errors
+  │      0 Number of requested variables
+  │      0 Number of altered variables
+  │      0 Get-request PDUs
+  │      0 Get-next PDUs
+  │      0 Set-request PDUs
+  │      0 Input queue packet drops (Maximum queue size 1000)
+  │  0 SNMP packets output
+  │      0 Too big errors (Maximum packet size 1500)
+  │      0 No such name errors
+  │      0 Bad values errors
+  │      0 General errors
+  │      0 Response PDUs
+  │      0 Trap PDUs
+  │  SNMP global trap: enabled
+  │  
+  │  SNMP logging: enabled
+  │      Logging to 10.10.40.100.162, 0/10, 0 sent, 0 dropped.
+  └───────────────────────────────────────────────────
+[22:22:39] 
+  ┌─ SNMP Communities: 'show snmp community'
+  │
+  │  Community name: private
+  │  Community Index: private
+  │  Community SecurityName: private
+  │  storage-type: nonvolatile	 active
+  │  
+  │  
+  │  Community name: public
+  │  Community Index: public
+  │  Community SecurityName: public
+  │  storage-type: nonvolatile	 active
+  └───────────────────────────────────────────────────
+[22:22:39] 
+  ┌─ Interface Status: 'show ip interface brief'
+  │
+  │  Interface              IP-Address      OK? Method Status                Protocol
+  │  GigabitEthernet0/0     unassigned      YES unset  up                    up      
+  │  GigabitEthernet0/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet0/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet0/3     10.0.30.2       YES NVRAM  up                    up      
+  │  GigabitEthernet1/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet1/3     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet2/3     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/0     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/1     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/2     unassigned      YES unset  down                  down    
+  │  GigabitEthernet3/3     unassigned      YES unset  down                  down    
+  │  Vlan30                 10.10.30.1      YES NVRAM  up                    up      
+  │  Vlan99                 10.99.99.13     YES NVRAM  up                    up
+  └───────────────────────────────────────────────────
+[22:22:39] 
+  ✓ Verification complete for SW-D-DMME
+
+[22:22:39] 
+════════════════════════════════════════════════════════════
+[22:22:39]   SECTION 3: L2 SWITCH VERIFICATION
+[22:22:39] ════════════════════════════════════════════════════════════
+
+[22:22:39] Connecting to SW-A-DEIE (10.99.99.21)...
+[22:22:39]   ✓ Connected to SW-A-DEIE
+[22:22:39] 
+  ┌─ SNMP Status: 'show snmp'
+  │
+  │  Chassis: 9HAMR0DDY7S
+  │  0 SNMP packets input
+  │      0 Bad SNMP version errors
+  │      0 Unknown community name
+  │      0 Illegal operation for community name supplied
+  │      0 Encoding errors
+  │      0 Number of requested variables
+  │      0 Number of altered variables
+  │      0 Get-request PDUs
+  │      0 Get-next PDUs
+  │      0 Set-request PDUs
+  │      0 Input queue packet drops (Maximum queue size 1000)
+  │  0 SNMP packets output
+  │      0 Too big errors (Maximum packet size 1500)
+  │      0 No such name errors
+  │      0 Bad values errors
+  │      0 General errors
+  │      0 Response PDUs
+  │      0 Trap PDUs
+  │  SNMP global trap: enabled
+  │  
+  │  SNMP logging: enabled
+  │      Logging to 10.10.40.100.162, 0/10, 0 sent, 0 dropped.
+  └───────────────────────────────────────────────────
+[22:22:40] 
+  ┌─ SNMP Communities: 'show snmp community'
+  │
+  │  Community name: private
+  │  Community Index: private
+  │  Community SecurityName: private
+  │  storage-type: nonvolatile	 active
+  │  
+  │  
+  │  Community name: public
+  │  Community Index: public
+  │  Community SecurityName: public
+  │  storage-type: nonvolatile	 active
+  └───────────────────────────────────────────────────
+[22:22:40] 
+  ✓ Verification complete for SW-A-DEIE
+
+[22:22:40] Connecting to SW-A-DCEE (10.99.99.22)...
+[22:22:40]   ✓ Connected to SW-A-DCEE
+[22:22:40] 
+  ┌─ SNMP Status: 'show snmp'
+  │
+  │  Chassis: 9S8QEVKZQNE
+  │  0 SNMP packets input
+  │      0 Bad SNMP version errors
+  │      0 Unknown community name
+  │      0 Illegal operation for community name supplied
+  │      0 Encoding errors
+  │      0 Number of requested variables
+  │      0 Number of altered variables
+  │      0 Get-request PDUs
+  │      0 Get-next PDUs
+  │      0 Set-request PDUs
+  │      0 Input queue packet drops (Maximum queue size 1000)
+  │  0 SNMP packets output
+  │      0 Too big errors (Maximum packet size 1500)
+  │      0 No such name errors
+  │      0 Bad values errors
+  │      0 General errors
+  │      0 Response PDUs
+  │      0 Trap PDUs
+  │  SNMP global trap: enabled
+  │  
+  │  SNMP logging: enabled
+  │      Logging to 10.10.40.100.162, 0/10, 0 sent, 0 dropped.
+  └───────────────────────────────────────────────────
+[22:22:40] 
+  ┌─ SNMP Communities: 'show snmp community'
+  │
+  │  Community name: private
+  │  Community Index: private
+  │  Community SecurityName: private
+  │  storage-type: nonvolatile	 active
+  │  
+  │  
+  │  Community name: public
+  │  Community Index: public
+  │  Community SecurityName: public
+  │  storage-type: nonvolatile	 active
+  └───────────────────────────────────────────────────
+[22:22:41] 
+  ✓ Verification complete for SW-A-DCEE
+
+[22:22:41] Connecting to SW-A-DMME (10.99.99.23)...
+[22:22:41]   ✓ Connected to SW-A-DMME
+[22:22:41] 
+  ┌─ SNMP Status: 'show snmp'
+  │
+  │  Chassis: 9JUJZG6ZK7C
+  │  0 SNMP packets input
+  │      0 Bad SNMP version errors
+  │      0 Unknown community name
+  │      0 Illegal operation for community name supplied
+  │      0 Encoding errors
+  │      0 Number of requested variables
+  │      0 Number of altered variables
+  │      0 Get-request PDUs
+  │      0 Get-next PDUs
+  │      0 Set-request PDUs
+  │      0 Input queue packet drops (Maximum queue size 1000)
+  │  0 SNMP packets output
+  │      0 Too big errors (Maximum packet size 1500)
+  │      0 No such name errors
+  │      0 Bad values errors
+  │      0 General errors
+  │      0 Response PDUs
+  │      0 Trap PDUs
+  │  SNMP global trap: enabled
+  │  
+  │  SNMP logging: enabled
+  │      Logging to 10.10.40.100.162, 0/10, 0 sent, 0 dropped.
+  └───────────────────────────────────────────────────
+[22:22:41] 
+  ┌─ SNMP Communities: 'show snmp community'
+  │
+  │  Community name: private
+  │  Community Index: private
+  │  Community SecurityName: private
+  │  storage-type: nonvolatile	 active
+  │  
+  │  
+  │  Community name: public
+  │  Community Index: public
+  │  Community SecurityName: public
+  │  storage-type: nonvolatile	 active
+  └───────────────────────────────────────────────────
+[22:22:41] 
+  ✓ Verification complete for SW-A-DMME
+
+[22:22:41] Connecting to SW-A-DIS (10.99.99.24)...
+[22:22:42]   ✓ Connected to SW-A-DIS
+[22:22:42] 
+  ┌─ SNMP Status: 'show snmp'
+  │
+  │  Chassis: 9TBDOSSB3HS
+  │  0 SNMP packets input
+  │      0 Bad SNMP version errors
+  │      0 Unknown community name
+  │      0 Illegal operation for community name supplied
+  │      0 Encoding errors
+  │      0 Number of requested variables
+  │      0 Number of altered variables
+  │      0 Get-request PDUs
+  │      0 Get-next PDUs
+  │      0 Set-request PDUs
+  │      0 Input queue packet drops (Maximum queue size 1000)
+  │  0 SNMP packets output
+  │      0 Too big errors (Maximum packet size 1500)
+  │      0 No such name errors
+  │      0 Bad values errors
+  │      0 General errors
+  │      0 Response PDUs
+  │      0 Trap PDUs
+  │  SNMP global trap: enabled
+  │  
+  │  SNMP logging: enabled
+  │      Logging to 10.10.40.100.162, 0/10, 0 sent, 0 dropped.
+  └───────────────────────────────────────────────────
+[22:22:42] 
+  ┌─ SNMP Communities: 'show snmp community'
+  │
+  │  Community name: private
+  │  Community Index: private
+  │  Community SecurityName: private
+  │  storage-type: nonvolatile	 active
+  │  
+  │  
+  │  Community name: public
+  │  Community Index: public
+  │  Community SecurityName: public
+  │  storage-type: nonvolatile	 active
+  └───────────────────────────────────────────────────
+[22:22:42] 
+  ✓ Verification complete for SW-A-DIS
+
+[22:22:42] 
+============================================================
+  VERIFICATION SUMMARY
+  ─────────────────────────────────────
+  Total devices:     10
+  Verified OK:       10
+  Failed:            0
+  Log file:          /root/network-project/Data-Networks-Project/automation/netmiko-automation/logs/verification_2026-08-04_22-22-33.log
+============================================================
+
+[22:22:42]   ✓ All devices verified successfully!
