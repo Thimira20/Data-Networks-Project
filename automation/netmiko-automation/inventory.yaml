@@ -20,20 +20,20 @@
 credentials:
   username: "admin"
   password: "admin123"
-  secret: "admin123"       # Enable password (priv 15 auto-enables)
+  secret: "admin123" # Enable password (priv 15 auto-enables)
 
 # ----------------------------------------------------------
 # ROUTERS (Cisco c7200 in GNS3)
 # ----------------------------------------------------------
 routers:
   - hostname: "R-CORE"
-    host: "10.0.0.2"              # Reachable from VLAN 99 via SW-Core OSPF routes
-    device_type: "cisco_ios"      # c7200 uses standard cisco_ios
+    host: "10.0.0.2" # Reachable from VLAN 99 via SW-Core OSPF routes
+    device_type: "cisco_ios" # c7200 uses standard cisco_ios
     role: "core_router"
     interfaces:
       - name: "FastEthernet0/0"
         description: "LINK_TO_R-EDGE"
-        ip_address: "10.0.1.1"
+        ip_address: "10.0.1.2"
         subnet_mask: "255.255.255.252"
       - name: "FastEthernet1/0"
         description: "LINK_TO_SW-CORE"
@@ -45,20 +45,20 @@ routers:
       networks:
         - { network: "10.0.0.0", wildcard: "0.0.0.3", area: 0 }
         - { network: "10.0.1.0", wildcard: "0.0.0.3", area: 0 }
-      default_originate: true     # Propagate default route from R-EDGE
+      default_originate: true # Propagate default route from R-EDGE
     # Default route to R-EDGE for internet access
     static_routes:
-      - { destination: "0.0.0.0", mask: "0.0.0.0", next_hop: "10.0.1.2" }
+      - { destination: "0.0.0.0", mask: "0.0.0.0", next_hop: "10.0.1.1" }
 
   - hostname: "R-EDGE"
-    host: "10.0.1.2"              # Reachable from VLAN 99 via SW-Core → R-CORE routing
+    host: "10.0.1.1" # Reachable from VLAN 99 via SW-Core → R-CORE routing
     device_type: "cisco_ios"
     role: "edge_router"
     interfaces:
       # FastEthernet (not GigabitEthernet) — confirmed in fixed_ping_from_ubunthu.md
       - name: "FastEthernet0/0"
         description: "LINK_TO_R-CORE"
-        ip_address: "10.0.1.2"
+        ip_address: "10.0.1.1"
         subnet_mask: "255.255.255.252"
         nat_direction: "inside"
       - name: "FastEthernet1/0"
@@ -73,15 +73,15 @@ routers:
         - { network: "10.0.1.0", wildcard: "0.0.0.3", area: 0 }
       default_originate: true
     nat:
-      acl_number: 100             # Using numbered ACL (per fixed_ping doc)
+      acl_number: 100 # Using numbered ACL (per fixed_ping doc)
       permitted_networks:
-        - { network: "10.99.99.0", wildcard: "0.0.0.255" }    # MGMT VLAN gets internet
-        - { network: "10.10.10.0", wildcard: "0.0.0.255" }    # VLAN_DEIE gets internet
-        - { network: "10.10.20.0", wildcard: "0.0.0.255" }    # VLAN_DCEE gets internet
+        - { network: "10.99.99.0", wildcard: "0.0.0.255" } # MGMT VLAN gets internet
+        - { network: "10.10.10.0", wildcard: "0.0.0.255" } # VLAN_DEIE gets internet
+        - { network: "10.10.20.0", wildcard: "0.0.0.255" } # VLAN_DCEE gets internet
       outside_interface: "FastEthernet1/0"
     # Static aggregate route for all internal traffic via R-CORE
     static_routes:
-      - { destination: "10.0.0.0", mask: "255.0.0.0", next_hop: "10.0.1.1" }
+      - { destination: "10.0.0.0", mask: "255.0.0.0", next_hop: "10.0.1.2" }
 
 # ----------------------------------------------------------
 # L3 DISTRIBUTION SWITCHES (IOSvL2 in GNS3, L3 mode)
@@ -132,7 +132,7 @@ l2_switches:
 # SNMP Settings (pushed to ALL devices by script 02)
 # ----------------------------------------------------------
 snmp:
-  community_ro: "public"                # Read-only community string
-  community_rw: "private"               # Read-write community string
-  trap_destination: "10.10.40.100"      # Zabbix/NMS server in DIS VLAN
+  community_ro: "public" # Read-only community string
+  community_rw: "private" # Read-write community string
+  trap_destination: "10.10.40.100" # Zabbix/NMS server in DIS VLAN
   snmp_version: "2c"

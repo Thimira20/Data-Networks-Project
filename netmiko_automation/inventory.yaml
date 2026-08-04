@@ -34,7 +34,7 @@ routers:
         subnet_mask: "255.255.255.252"
       - name: "FastEthernet0/0"           # Connected to R-EDGE f0/0
         description: "LINK_TO_R-EDGE"
-        ip_address: "10.0.1.1"
+        ip_address: "10.0.1.2"
         subnet_mask: "255.255.255.252"
     ospf:
       process_id: 1
@@ -44,13 +44,13 @@ routers:
         - { network: "10.0.1.0", wildcard: "0.0.0.3", area: 0 }
 
   - hostname: "R-EDGE"
-    host: "10.0.1.2"              # Reachable from VLAN 99 via SW-Core -> R-CORE routing
+    host: "10.0.1.1"              # Reachable from VLAN 99 via SW-Core -> R-CORE routing
     device_type: "cisco_ios"
     role: "edge_router"
     interfaces:
       - name: "FastEthernet0/0"           # Connected to R-CORE f0/0
         description: "LINK_TO_R-CORE"
-        ip_address: "10.0.1.2"
+        ip_address: "10.0.1.1"
         subnet_mask: "255.255.255.252"
         nat_direction: "inside"
       - name: "FastEthernet1/0"           # Connected to NAT1 nat0
