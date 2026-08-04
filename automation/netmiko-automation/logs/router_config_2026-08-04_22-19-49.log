@@ -1,0 +1,61 @@
+============================================================
+  NETMIKO ROUTER CONFIGURATION SCRIPT
+  EE8203 — Network Automation with Python (Netmiko)
+  Timestamp: 2026-08-04_22-19-49
+============================================================
+[22:19:49] 
+✓ Inventory loaded: /root/network-project/Data-Networks-Project/automation/netmiko-automation/inventory.yaml
+[22:19:49]   Found 2 routers to configure
+
+[22:19:49] 
+[1/2] ──────────────────────────────────────────────────
+[22:19:49] Connecting to R-CORE (10.0.0.2)...
+[22:19:50]   ✓ SSH connection established to R-CORE
+[22:19:50]   → FastEthernet0/0 already configured — SKIPPING (idempotent)
+[22:19:51]   → FastEthernet1/0 already configured — SKIPPING (idempotent)
+[22:19:51]   → OSPF process 1 already configured — SKIPPING (idempotent)
+[22:19:51]   → Static routes already configured — SKIPPING (idempotent)
+[22:19:51]   → ACL 'ACL-INFRASTRUCTURE-PROTECT' already exists — SKIPPING (idempotent)
+[22:19:51]   → Saving configuration (write memory)...
+[22:19:52]   ✓ Configuration saved to NVRAM
+[22:19:52]   ✓ R-CORE complete — 0 changes applied, 5 sections skipped (idempotent)
+[22:19:52] 
+[2/2] ──────────────────────────────────────────────────
+[22:19:52] Connecting to R-EDGE (10.0.1.1)...
+[22:19:53]   ✓ SSH connection established to R-EDGE
+[22:19:53]   → FastEthernet0/0 already configured — SKIPPING (idempotent)
+[22:19:53]   → FastEthernet1/0 already configured — SKIPPING (idempotent)
+[22:19:54]   → OSPF process 1 already configured — SKIPPING (idempotent)
+[22:19:54]   → NAT (ACL 100) already configured — SKIPPING (idempotent)
+[22:19:54]   → Static routes already configured — SKIPPING (idempotent)
+[22:19:54]   → Deploying ACL 'ACL-WAN-INBOUND'...
+[22:19:55]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+R-EDGE(config)#ip access-list extended ACL-WAN-INBOUND
+R-EDGE(config-ext-nacl)# remark --- Anti-spoofing: block private IPs from WAN ---
+R-EDGE(config-ext-nacl)# deny ip 10.0.0.0 0.255.255.255 any
+R-EDGE(config-ext-nacl)# deny ip 172.16.0.0 0.15.255.255 any
+R-EDGE(config-ext-nacl)# deny ip 192.168.0.0 0.0.255.255 any
+R-EDGE(config-ext-nacl)# remark --- Block loopback spoofing ---
+R-EDGE(config-ext-nacl)# deny ip 127.0.0.0 0.255.255.255 any
+R-EDGE(config-ext-nacl)# remark --- Allow all legitimate inbound traffic ---
+R-EDGE(config-ext-nacl)# permit ip any any
+R-EDGE(config-ext-nacl)#exit
+R-EDGE(config)#end
+R-EDGE#
+[22:19:55]   ✓ ACL applied to FastEthernet1/0 (in)
+[22:19:55]   ✓ ACL 'ACL-WAN-INBOUND' deployed successfully
+[22:19:55]   → Saving configuration (write memory)...
+[22:19:56]   ✓ Configuration saved to NVRAM
+[22:19:56]   ✓ R-EDGE complete — 1 changes applied, 5 sections skipped (idempotent)
+[22:19:56] 
+============================================================
+  SUMMARY
+  ─────────────────────────────────────
+  Devices attempted:  2
+  Devices successful: 2
+  Devices failed:     0
+  Total changes:      1
+  Log file:           /root/network-project/Data-Networks-Project/automation/netmiko-automation/logs/router_config_2026-08-04_22-19-49.log
+============================================================
