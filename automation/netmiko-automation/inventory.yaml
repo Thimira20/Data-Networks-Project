@@ -7,11 +7,11 @@
 #
 # ⚠️  IMPORTANT — INTERFACE NAMES:
 #   R-CORE uses Cisco c7200 with FastEthernet cards:
-#     - FastEthernet0/0 → SW-CORE
-#     - FastEthernet1/0 → R-EDGE
+#     - FastEthernet0/0 → R-EDGE       (10.0.1.2/30)
+#     - FastEthernet1/0 → SW-CORE      (10.0.0.2/30)
 #   R-EDGE uses Cisco c7200 with FastEthernet cards:
-#     - FastEthernet0/0 → R-CORE (inside)
-#     - FastEthernet1/0 → Internet NAT cloud (outside)
+#     - FastEthernet0/0 → R-CORE       (10.0.1.1/30, NAT inside)
+#     - FastEthernet1/0 → NAT1 / ISP   (DHCP,       NAT outside)
 # ============================================================
 
 # ----------------------------------------------------------
@@ -33,7 +33,7 @@ routers:
     interfaces:
       - name: "FastEthernet0/0"
         description: "LINK_TO_R-EDGE"
-        ip_address: "10.0.1.1"
+        ip_address: "10.0.1.2"
         subnet_mask: "255.255.255.252"
       - name: "FastEthernet1/0"
         description: "LINK_TO_SW-CORE"
@@ -48,17 +48,17 @@ routers:
       default_originate: true     # Propagate default route from R-EDGE
     # Default route to R-EDGE for internet access
     static_routes:
-      - { destination: "0.0.0.0", mask: "0.0.0.0", next_hop: "10.0.1.2" }
+      - { destination: "0.0.0.0", mask: "0.0.0.0", next_hop: "10.0.1.1" }
 
   - hostname: "R-EDGE"
-    host: "10.0.1.2"              # Reachable from VLAN 99 via SW-Core → R-CORE routing
+    host: "10.0.1.1"              # Reachable from VLAN 99 via SW-Core → R-CORE routing
     device_type: "cisco_ios"
     role: "edge_router"
     interfaces:
       # FastEthernet (not GigabitEthernet) — confirmed in fixed_ping_from_ubunthu.md
       - name: "FastEthernet0/0"
         description: "LINK_TO_R-CORE"
-        ip_address: "10.0.1.2"
+        ip_address: "10.0.1.1"
         subnet_mask: "255.255.255.252"
         nat_direction: "inside"
       - name: "FastEthernet1/0"
@@ -81,7 +81,7 @@ routers:
       outside_interface: "FastEthernet1/0"
     # Static aggregate route for all internal traffic via R-CORE
     static_routes:
-      - { destination: "10.0.0.0", mask: "255.0.0.0", next_hop: "10.0.1.1" }
+      - { destination: "10.0.0.0", mask: "255.0.0.0", next_hop: "10.0.1.2" }
 
 # ----------------------------------------------------------
 # L3 DISTRIBUTION SWITCHES (IOSvL2 in GNS3, L3 mode)

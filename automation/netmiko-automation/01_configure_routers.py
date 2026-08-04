@@ -8,7 +8,7 @@ University of Ruhuna — 8th Semester Project
 Purpose:
     Automates the full configuration of R-CORE and R-EDGE routers
     via SSH, including:
-      - Interface IP addressing
+      - Interface IP addressing (Static and DHCP)
       - OSPF dynamic routing
       - NAT overload (PAT) rules on R-EDGE
       - ACL deployment on both routers
@@ -35,6 +35,7 @@ Date:   2026-07-31
 import yaml          # For reading the YAML inventory file
 import os            # For file path operations
 import sys           # For sys.exit on fatal errors
+import time          # For sleep delays during DHCP configuration
 from datetime import datetime  # For timestamped logging
 
 # Netmiko — the core SSH automation library for network devices
@@ -179,8 +180,6 @@ def build_connection_params(device, credentials):
         "timeout":     30,        # Seconds to wait for TCP connection
         "session_timeout": 120,   # Increased: DHCP interfaces may delay prompts
         "banner_timeout":  30,    # Seconds to wait for SSH banner
-        # Uncomment below if SSH fails with algorithm errors on c7200:
-        # "disabled_algorithms": {"pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]},
     }
 
 
@@ -207,8 +206,6 @@ def check_config_exists(connection, check_string):
 # ============================================================
 # CONFIGURATION BUILDER FUNCTIONS
 # ============================================================
-# These functions read parameters from inventory.yaml and
-# dynamically build IOS command lists. No hardcoding!
 
 def build_interface_commands(interface_config):
     """
@@ -219,80 +216,57 @@ def build_interface_commands(interface_config):
                          subnet_mask, and optionally nat_direction
     
     Returns:
-        tuple: (phase1_commands, phase2_commands)
-               phase1_commands — commands to send first (may include 'ip address dhcp')
-               phase2_commands — remaining commands to send after phase1 completes
-               If the interface is NOT DHCP, phase2_commands is [] (everything in phase1).
+        list: List of IOS commands to configure the interface.
     """
     name = interface_config["name"]
     is_dhcp = interface_config["ip_address"] == "dhcp"
 
     if is_dhcp:
-        # ── DHCP interface: split into two phases ─────────────────────────
-        # Phase 1: enter interface, set description, issue 'ip address dhcp'
-        #   → Netmiko must wait for DHCP discovery before the prompt returns.
-        #     We send this block alone with a long read_timeout.
-        phase1 = [
-            f"interface {name}",
-            f" description {interface_config['description']}",
-            " ip address dhcp",
-            "exit",
-        ]
-        # Phase 2: re-enter the interface for any remaining commands
-        #   (nat direction, no shutdown) now that the prompt is stable.
-        phase2_body = []
-        nat_dir = interface_config.get("nat_direction")
-        if nat_dir:
-            phase2_body.append(f" ip nat {nat_dir}")
-        phase2_body.append(" no shutdown")
-
-        phase2 = [
-            f"interface {name}",
-            *phase2_body,
-            "exit",
-        ]
-        return phase1, phase2
-    else:
-        # ── Static IP interface: single phase ─────────────────────────────
+        # ── DHCP interface ────────────────────────────────────────────────
+        # Bring interface up first, then request DHCP address.
         commands = [
             f"interface {name}",
             f" description {interface_config['description']}",
-            f" ip address {interface_config['ip_address']} "
-            f"{interface_config['subnet_mask']}",
+            " no shutdown",
+            " ip address dhcp",
+        ]
+        nat_dir = interface_config.get("nat_direction")
+        if nat_dir:
+            commands.append(f" ip nat {nat_dir}")
+            
+        # Appending 'exit' returns to (config)# mode and flushes the prompt
+        commands.append("exit")
+        return commands
+    else:
+        # ── Static IP interface ───────────────────────────────────────────
+        commands = [
+            f"interface {name}",
+            f" description {interface_config['description']}",
+            f" ip address {interface_config['ip_address']} {interface_config['subnet_mask']}",
         ]
         nat_dir = interface_config.get("nat_direction")
         if nat_dir:
             commands.append(f" ip nat {nat_dir}")
         commands.append(" no shutdown")
         commands.append("exit")
-        return commands, []
+        return commands
 
 
 def build_ospf_commands(ospf_config):
     """
     Build OSPF configuration commands from inventory data.
-    
-    Args:
-        ospf_config: Dict with keys: process_id, router_id, networks,
-                     and optionally default_originate
-    
-    Returns:
-        list: IOS CLI commands for OSPF configuration
     """
     pid = ospf_config["process_id"]
     commands = [f"router ospf {pid}"]
     
-    # Set explicit router-id for stable OSPF operation
     if "router_id" in ospf_config:
         commands.append(f" router-id {ospf_config['router_id']}")
     
-    # Add each network statement
     for net in ospf_config["networks"]:
         commands.append(
             f" network {net['network']} {net['wildcard']} area {net['area']}"
         )
     
-    # R-EDGE originates default route for internet access
     if ospf_config.get("default_originate"):
         commands.append(" default-information originate")
     
@@ -304,20 +278,9 @@ def build_nat_commands(nat_config):
     """
     Build NAT overload (PAT) configuration commands from inventory data.
     Only applicable to R-EDGE.
-    
-    Supports both named ACLs (acl_name) and numbered ACLs (acl_number).
-    The fixed_ping_from_ubunthu.md uses numbered ACL 100.
-    
-    Args:
-        nat_config: Dict with keys: acl_name or acl_number,
-                    permitted_networks, outside_interface
-    
-    Returns:
-        list: IOS CLI commands for NAT configuration
     """
     commands = []
     
-    # Support both named and numbered ACLs
     if "acl_number" in nat_config:
         acl_id = str(nat_config["acl_number"])
         for net_entry in nat_config["permitted_networks"]:
@@ -333,7 +296,6 @@ def build_nat_commands(nat_config):
             commands.append(f" permit {net_entry['network']} {net_entry['wildcard']}")
         commands.append("exit")
     
-    # NAT overload rule — maps internal IPs to the outside interface IP
     outside_if = nat_config["outside_interface"]
     commands.append(
         f"ip nat inside source list {acl_id} "
@@ -345,12 +307,6 @@ def build_nat_commands(nat_config):
 def build_static_route_commands(static_routes):
     """
     Build static route configuration commands from inventory data.
-    
-    Args:
-        static_routes: List of dicts with keys: destination, mask, next_hop
-    
-    Returns:
-        list: IOS CLI commands for static routes
     """
     commands = []
     for route in static_routes:
@@ -368,14 +324,6 @@ def configure_router(device, credentials, log_file):
     """
     Connect to a single router and apply all configuration sections.
     Implements idempotency by checking existing config before each push.
-    
-    Args:
-        device:      Device dict from inventory (includes config data)
-        credentials: Shared credentials dict
-        log_file:    Path to log file
-        
-    Returns:
-        tuple: (success: bool, changes_made: int)
     """
     hostname = device["hostname"]
     host = device["host"]
@@ -389,16 +337,15 @@ def configure_router(device, credentials, log_file):
         conn_params = build_connection_params(device, credentials)
         connection = ConnectHandler(**conn_params)
         
-        # Enter privileged EXEC mode (enable)
-        # With privilege 15, this is usually automatic
         connection.enable()
+        # Suppress console logging to prevent async syslog messages from corrupting prompt matching
+        connection.send_command("no logging console")
         log(log_file, f"  ✓ SSH connection established to {hostname}")
 
         # ── Step 2: Configure Interfaces ──────────────────────
         for iface in device.get("interfaces", []):
             iface_name = iface["name"]
             is_dhcp = iface["ip_address"] == "dhcp"
-            # Idempotency: check if IP already assigned
             check_str = "ip address dhcp" if is_dhcp else iface["ip_address"]
 
             if check_config_exists(connection, check_str):
@@ -406,28 +353,34 @@ def configure_router(device, credentials, log_file):
                 sections_skipped += 1
             else:
                 log(log_file, f"  → Configuring {iface_name}...")
-                phase1, phase2 = build_interface_commands(iface)
 
                 if is_dhcp:
-                    # Phase 1: send 'ip address dhcp' with an extended read_timeout
-                    # to survive the DHCP discovery delay (can take 15-30 s on GNS3).
-                    log(log_file, f"    [DHCP] Sending phase-1 (ip address dhcp) — extended timeout 60 s...")
-                    output1 = connection.send_config_set(
-                        phase1,
-                        read_timeout=60,   # Wait up to 60 s for DHCP + prompt return
-                    )
-                    log(log_file, f"    Device output (phase-1):\n{output1}", also_print=False)
-
-                    # Phase 2: remaining commands (ip nat outside, no shutdown)
-                    if phase2:
-                        log(log_file, f"    [DHCP] Sending phase-2 (nat/no-shutdown)...")
-                        output2 = connection.send_config_set(
-                            phase2,
-                            read_timeout=30,
-                        )
-                        log(log_file, f"    Device output (phase-2):\n{output2}", also_print=False)
+                    log(log_file, f"    [DHCP] Sending interface commands via timing channel...")
+                    # Enter configuration mode explicitly
+                    connection.config_mode()
+                    
+                    # Send interface setup commands
+                    connection.send_command_timing(f"interface {iface_name}")
+                    connection.send_command_timing(f"description {iface['description']}")
+                    connection.send_command_timing("no shutdown")
+                    
+                    if iface.get("nat_direction"):
+                        connection.send_command_timing(f"ip nat {iface['nat_direction']}")
+                    
+                    # Send DHCP command — delay_factor=10 gives ~20s for DHCP discovery
+                    log(log_file, f"    [DHCP] Requesting IP address (non-blocking timing)...")
+                    connection.send_command_timing("ip address dhcp", delay_factor=10)
+                    
+                    # Allow time for async DHCP syslog messages to flush
+                    time.sleep(3)
+                    connection.clear_buffer()
+                    
+                    # Exit interface and config mode cleanly
+                    connection.send_command_timing("exit")
+                    connection.exit_config_mode()
                 else:
-                    output = connection.send_config_set(phase1)
+                    commands = build_interface_commands(iface)
+                    output = connection.send_config_set(commands)
                     log(log_file, f"    Device output:\n{output}", also_print=False)
 
                 log(log_file, f"  ✓ {iface_name} configured successfully")
@@ -491,7 +444,6 @@ def configure_router(device, credentials, log_file):
                 output = connection.send_config_set(acl_info["acl_commands"])
                 log(log_file, f"    Device output:\n{output}", also_print=False)
                 
-                # Apply ACL to interface if specified (R-EDGE WAN ACL)
                 if "apply_interface" in acl_info:
                     apply_cmds = [
                         f"interface {acl_info['apply_interface']}",
@@ -508,7 +460,7 @@ def configure_router(device, credentials, log_file):
         log(log_file, f"  → Saving configuration (write memory)...")
         save_output = connection.send_command(
             "write memory",
-            expect_string=r"\[OK\]|#",  # Wait for [OK] or prompt
+            expect_string=r"\[OK\]|#",
             read_timeout=30
         )
         log(log_file, f"  ✓ Configuration saved to NVRAM")
@@ -539,7 +491,6 @@ def configure_router(device, credentials, log_file):
         return False, 0
 
     except Exception as e:
-        # Catch-all for any unexpected errors
         log(log_file, 
             f"  ✗ FAILED: Unexpected error on {hostname}: "
             f"{type(e).__name__}: {e}"
@@ -552,16 +503,6 @@ def configure_router(device, credentials, log_file):
 # ============================================================
 
 def main():
-    """
-    Main function — orchestrates the router configuration workflow.
-    
-    Workflow:
-      1. Setup logging
-      2. Load device inventory from YAML
-      3. Iterate over all routers and apply configuration
-      4. Print summary with success/failure counts
-    """
-    # ── Setup ─────────────────────────────────────────────────
     log_file, timestamp = setup_logging()
     
     banner = (
@@ -573,7 +514,6 @@ def main():
     )
     log(log_file, banner)
 
-    # ── Load Inventory ────────────────────────────────────────
     try:
         inventory = load_inventory(INVENTORY_FILE)
         log(log_file, f"\n✓ Inventory loaded: {INVENTORY_FILE}")
@@ -585,7 +525,6 @@ def main():
         log(log_file, f"\n✗ ERROR: Invalid YAML syntax in inventory: {e}")
         sys.exit(1)
 
-    # Extract shared credentials and router list
     credentials = inventory["credentials"]
     routers = inventory["routers"]
     total_devices = len(routers)
@@ -594,7 +533,6 @@ def main():
 
     log(log_file, f"  Found {total_devices} routers to configure\n")
 
-    # ── Configure Each Router ─────────────────────────────────
     for idx, device in enumerate(routers, start=1):
         log(log_file, f"\n[{idx}/{total_devices}] {'─' * 50}")
         
@@ -604,7 +542,6 @@ def main():
             success_count += 1
             total_changes += changes
 
-    # ── Print Summary ─────────────────────────────────────────
     summary = (
         f"\n{'=' * 60}\n"
         f"  SUMMARY\n"
@@ -618,11 +555,9 @@ def main():
     )
     log(log_file, summary)
 
-    # Return non-zero exit code if any device failed
     if success_count < total_devices:
         sys.exit(1)
 
 
-# ── Run the script ────────────────────────────────────────────
 if __name__ == "__main__":
     main()
