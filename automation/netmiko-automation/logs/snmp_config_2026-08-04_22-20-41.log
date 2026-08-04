@@ -1,0 +1,137 @@
+============================================================
+  NETMIKO SNMP CONFIGURATION SCRIPT
+  EE8203 — Push SNMPv2c to ALL Network Devices
+  Timestamp: 2026-08-04_22-20-41
+============================================================
+[22:20:41] 
+✓ Inventory loaded: /root/network-project/Data-Networks-Project/automation/netmiko-automation/inventory.yaml
+[22:20:41]   Found 10 devices to configure
+[22:20:41]   SNMP RO community: public
+[22:20:41]   SNMP RW community: private
+[22:20:41]   Trap destination:  10.10.40.100
+[22:20:41] 
+[22:20:41]   [01/10] 
+[22:20:43]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+R-CORE(config)#snmp-server community public RO
+R-CORE(config)#snmp-server community private RW
+R-CORE(config)#snmp-server host 10.10.40.100 version 2c public
+R-CORE(config)#snmp-server enable traps
+% Cannot enable both sham-link state-change interface traps.
+% New sham link interface trap not enabled.
+R-CORE(config)#end
+R-CORE#
+[22:20:43]   [R-CORE..............] (       10.0.0.2) ✓ SNMP configured successfully
+[22:20:43]   [02/10] 
+[22:20:44]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+R-EDGE(config)#snmp-server community public RO
+R-EDGE(config)#snmp-server community private RW
+R-EDGE(config)#snmp-server host 10.10.40.100 version 2c public
+R-EDGE(config)#snmp-server enable traps
+% Cannot enable both sham-link state-change interface traps.
+% New sham link interface trap not enabled.
+R-EDGE(config)#end
+R-EDGE#
+[22:20:45]   [R-EDGE..............] (       10.0.1.1) ✓ SNMP configured successfully
+[22:20:45]   [03/10] 
+[22:20:47]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+SW-Core(config)#snmp-server community public RO
+SW-Core(config)#snmp-server community private RW
+SW-Core(config)#snmp-server host 10.10.40.100 version 2c public
+SW-Core(config)#snmp-server enable traps
+SW-Core(config)#end
+SW-Core#
+[22:20:49]   [SW-Core.............] (     10.99.99.1) ✓ SNMP configured successfully
+[22:20:49]   [04/10] 
+[22:20:51]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+SW-D-DEIE(config)#snmp-server community public RO
+SW-D-DEIE(config)#snmp-server community private RW
+SW-D-DEIE(config)#snmp-server host 10.10.40.100 version 2c public
+SW-D-DEIE(config)#snmp-server enable traps
+SW-D-DEIE(config)#end
+SW-D-DEIE#
+[22:20:53]   [SW-D-DEIE...........] (    10.99.99.11) ✓ SNMP configured successfully
+[22:20:53]   [05/10] 
+[22:20:55]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+SW-D-DCEE(config)#snmp-server community public RO
+SW-D-DCEE(config)#snmp-server community private RW
+SW-D-DCEE(config)#snmp-server host 10.10.40.100 version 2c public
+SW-D-DCEE(config)#snmp-server enable traps
+SW-D-DCEE(config)#end
+SW-D-DCEE#
+[22:20:57]   [SW-D-DCEE...........] (    10.99.99.12) ✓ SNMP configured successfully
+[22:20:57]   [06/10] 
+[22:20:59]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+SW-D-DMME(config)#snmp-server community public RO
+SW-D-DMME(config)#snmp-server community private RW
+SW-D-DMME(config)#snmp-server host 10.10.40.100 version 2c public
+SW-D-DMME(config)#snmp-server enable traps
+SW-D-DMME(config)#end
+SW-D-DMME#
+[22:21:01]   [SW-D-DMME...........] (    10.99.99.13) ✓ SNMP configured successfully
+[22:21:01]   [07/10] 
+[22:21:03]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+SW-A-DEIE(config)#snmp-server community public RO
+SW-A-DEIE(config)#snmp-server community private RW
+SW-A-DEIE(config)#snmp-server host 10.10.40.100 version 2c public
+SW-A-DEIE(config)#snmp-server enable traps
+SW-A-DEIE(config)#end
+SW-A-DEIE#
+[22:21:05]   [SW-A-DEIE...........] (    10.99.99.21) ✓ SNMP configured successfully
+[22:21:05]   [08/10] 
+[22:21:07]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+SW-A-DCEE(config)#snmp-server community public RO
+SW-A-DCEE(config)#snmp-server community private RW
+SW-A-DCEE(config)#snmp-server host 10.10.40.100 version 2c public
+SW-A-DCEE(config)#snmp-server enable traps
+SW-A-DCEE(config)#end
+SW-A-DCEE#
+[22:21:09]   [SW-A-DCEE...........] (    10.99.99.22) ✓ SNMP configured successfully
+[22:21:09]   [09/10] 
+[22:21:11]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+SW-A-DMME(config)#snmp-server community public RO
+SW-A-DMME(config)#snmp-server community private RW
+SW-A-DMME(config)#snmp-server host 10.10.40.100 version 2c public
+SW-A-DMME(config)#snmp-server enable traps
+SW-A-DMME(config)#end
+SW-A-DMME#
+[22:21:13]   [SW-A-DMME...........] (    10.99.99.23) ✓ SNMP configured successfully
+[22:21:13]   [10/10] 
+[22:21:15]     Device output:
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+SW-A-DIS(config)#snmp-server community public RO
+SW-A-DIS(config)#snmp-server community private RW
+SW-A-DIS(config)#snmp-server host 10.10.40.100 version 2c public
+SW-A-DIS(config)#snmp-server enable traps
+SW-A-DIS(config)#end
+SW-A-DIS#
+[22:21:17]   [SW-A-DIS............] (    10.99.99.24) ✓ SNMP configured successfully
+[22:21:17] 
+============================================================
+  SUMMARY
+  ─────────────────────────────────────
+  Total devices:      10
+  Successful:         10
+    ├─ Changed:       10
+    └─ Skipped:       0 (already configured)
+  Failed:             0
+  Log file:           /root/network-project/Data-Networks-Project/automation/netmiko-automation/logs/snmp_config_2026-08-04_22-20-41.log
+============================================================

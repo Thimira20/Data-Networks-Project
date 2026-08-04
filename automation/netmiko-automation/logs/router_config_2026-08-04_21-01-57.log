@@ -1,0 +1,36 @@
+============================================================
+  NETMIKO ROUTER CONFIGURATION SCRIPT
+  EE8203 — Network Automation with Python (Netmiko)
+  Timestamp: 2026-08-04_21-01-57
+============================================================
+[21:01:57] 
+✓ Inventory loaded: /root/network-project/Data-Networks-Project/automation/netmiko-automation/inventory.yaml
+[21:01:57]   Found 2 routers to configure
+
+[21:01:57] 
+[1/2] ──────────────────────────────────────────────────
+[21:01:57] Connecting to R-CORE (10.0.0.2)...
+[21:02:07]   ✗ FAILED: Connection to R-CORE (10.0.0.2) timed out!
+[21:02:07]     Troubleshoot:
+[21:02:07]       1. Is the device powered on in GNS3?
+[21:02:07]       2. Can you ping 10.0.0.2 from this machine?
+[21:02:07]       3. Is SSH enabled on the device?
+[21:02:07] 
+[2/2] ──────────────────────────────────────────────────
+[21:02:07] Connecting to R-EDGE (10.0.1.2)...
+[21:02:17]   ✗ FAILED: Connection to R-EDGE (10.0.1.2) timed out!
+[21:02:17]     Troubleshoot:
+[21:02:17]       1. Is the device powered on in GNS3?
+[21:02:17]       2. Can you ping 10.0.1.2 from this machine?
+[21:02:17]       3. Is SSH enabled on the device?
+[21:02:17] 
+============================================================
+  SUMMARY
+  ─────────────────────────────────────
+  Devices attempted:  2
+  Devices successful: 0
+  Devices failed:     2
+  Total changes:      0
+  Log file:           /root/network-project/Data-Networks-Project/automation/netmiko-automation/logs/router_config_2026-08-04_21-01-57.log
+============================================================
+(venv) root@UbuntuDockerGuest-1:~/network-project/Data-Network

@@ -1,0 +1,50 @@
+============================================================
+  NETMIKO ROUTER CONFIGURATION SCRIPT
+  EE8203 — Network Automation with Python (Netmiko)
+  Timestamp: 2026-08-04_20-50-49
+============================================================
+[20:50:49] 
+✓ Inventory loaded: /root/network-project/Data-Networks-Project/automation/netmiko-automation/inventory.yaml
+[20:50:49]   Found 2 routers to configure
+
+[20:50:49] 
+[1/2] ──────────────────────────────────────────────────
+[20:50:49] Connecting to R-CORE (10.0.0.2)...
+[20:50:50]   ✓ SSH connection established to R-CORE
+[20:50:50]   → FastEthernet0/0 already configured — SKIPPING (idempotent)
+[20:50:50]   → FastEthernet1/0 already configured — SKIPPING (idempotent)
+[20:50:50]   → OSPF process 1 already configured — SKIPPING (idempotent)
+[20:50:51]   → Static routes already configured — SKIPPING (idempotent)
+[20:50:51]   → ACL 'ACL-INFRASTRUCTURE-PROTECT' already exists — SKIPPING (idempotent)
+[20:50:51]   → Saving configuration (write memory)...
+[20:50:51]   ✓ Configuration saved to NVRAM
+[20:50:51]   ✓ R-CORE complete — 0 changes applied, 5 sections skipped (idempotent)
+[20:50:51] 
+[2/2] ──────────────────────────────────────────────────
+[20:50:51] Connecting to R-EDGE (10.0.1.2)...
+[20:50:52]   ✓ SSH connection established to R-EDGE
+[20:50:52]   → FastEthernet0/0 already configured — SKIPPING (idempotent)
+[20:50:52]   → Configuring FastEthernet1/0...
+[20:50:52]     [DHCP] Sending phase-1 (ip address dhcp) — extended timeout 60 s...
+[20:51:52]   ✗ FAILED: Unexpected error on R-EDGE: ReadTimeout: 
+
+Pattern not detected: 'exit' in output.
+
+Things you might try to fix this:
+1. Adjust the regex pattern to better identify the terminating string. Note, in
+many situations the pattern is automatically based on the network device's prompt.
+2. Increase the read_timeout to a larger value.
+
+You can also look at the Netmiko session_log or debug log for more information.
+
+
+[20:51:52] 
+============================================================
+  SUMMARY
+  ─────────────────────────────────────
+  Devices attempted:  2
+  Devices successful: 1
+  Devices failed:     1
+  Total changes:      0
+  Log file:           /root/network-project/Data-Networks-Project/automation/netmiko-automation/logs/router_config_2026-08-04_20-50-49.log
+============================================================

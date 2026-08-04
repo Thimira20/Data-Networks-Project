@@ -1,0 +1,39 @@
+============================================================
+  NETMIKO ROUTER CONFIGURATION SCRIPT
+  EE8203 — Network Automation with Python (Netmiko)
+  Timestamp: 2026-08-04_21-28-15
+============================================================
+[21:28:15] 
+✓ Inventory loaded: /root/network-project/Data-Networks-Project/automation/netmiko-automation/inventory.yaml
+[21:28:15]   Found 2 routers to configure
+
+[21:28:15] 
+[1/2] ──────────────────────────────────────────────────
+[21:28:15] Connecting to R-CORE (10.0.0.2)...
+[21:28:16]   ✓ SSH connection established to R-CORE
+[21:28:17]   → FastEthernet0/0 already configured — SKIPPING (idempotent)
+[21:28:17]   → FastEthernet1/0 already configured — SKIPPING (idempotent)
+[21:28:17]   → OSPF process 1 already configured — SKIPPING (idempotent)
+[21:28:17]   → Static routes already configured — SKIPPING (idempotent)
+[21:28:18]   → ACL 'ACL-INFRASTRUCTURE-PROTECT' already exists — SKIPPING (idempotent)
+[21:28:18]   → Saving configuration (write memory)...
+[21:28:18]   ✓ Configuration saved to NVRAM
+[21:28:18]   ✓ R-CORE complete — 0 changes applied, 5 sections skipped (idempotent)
+[21:28:18] 
+[2/2] ──────────────────────────────────────────────────
+[21:28:18] Connecting to R-EDGE (10.0.1.2)...
+[21:28:19]   ✓ SSH connection established to R-EDGE
+[21:28:19]   → FastEthernet0/0 already configured — SKIPPING (idempotent)
+[21:28:19]   → Configuring FastEthernet1/0...
+[21:28:19]     [DHCP] Sending interface commands (cmd_verify=False)...
+[21:28:19]   ✗ FAILED: Unexpected error on R-EDGE: TypeError: BaseConnection.send_config_set() got an unexpected keyword argument 'expect_string'
+[21:28:19] 
+============================================================
+  SUMMARY
+  ─────────────────────────────────────
+  Devices attempted:  2
+  Devices successful: 1
+  Devices failed:     1
+  Total changes:      0
+  Log file:           /root/network-project/Data-Networks-Project/automation/netmiko-automation/logs/router_config_2026-08-04_21-28-15.log
+============================================================
