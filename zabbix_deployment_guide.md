@@ -89,9 +89,7 @@ Download the Ubuntu 22.04.x LTS **Server** ISO (not Desktop — it's lighter):
 
 If your GNS3 already runs Docker well (like `UbuntuDockerGuest-1`), you can use a Docker container. However, Zabbix needs MySQL/PostgreSQL, Apache/Nginx — it's heavier than a simple automation container.
 
-#### Step 2B.1: Use the Official Zabbix Docker Appliance
-
-GNS3 Marketplace has a "Zabbix Appliance" template, or you can create one:
+#### Step 2B.1: Create the Docker Container in GNS3
 
 1. In GNS3: **Edit → Preferences → Docker → Docker containers → New**
 2. Image: `ubuntu:22.04`
@@ -99,8 +97,37 @@ GNS3 Marketplace has a "Zabbix Appliance" template, or you can create one:
 4. Adapters: 1
 5. Start command: `/bin/bash`
 
-> [!WARNING]
-> Docker containers lose data on restart unless you configure volumes. For a university project demo, this is usually fine. For production, use Option A (QEMU VM).
+#### Step 2B.2: Configure Persistent Volumes in GNS3 (Prevent Data Loss)
+
+> [!IMPORTANT]
+> By default, Docker containers lose modified files when restarted. To persist your Zabbix database, host definitions, triggers, and dashboard configuration across GNS3 restarts, configure **Persistent Directories**:
+
+1. In GNS3, right-click the **VM-ZABBIX** container (or go to **Preferences → Docker containers → VM-ZABBIX → Edit**).
+2. Click on the **Container configuration** or **Edit** button.
+3. Under **Persistent directories**, add the following directory paths (one per line):
+   ```
+   /var/lib/mysql
+   /etc/zabbix
+   /etc/apache2
+   ```
+4. Click **OK** and **Apply**.
+
+**Why these paths?**
+- `/var/lib/mysql`: Holds the MySQL/MariaDB database files (where all Zabbix settings, onboarded hosts, triggers, items, and dashboards are saved).
+- `/etc/zabbix`: Holds your Zabbix server & database configuration files.
+- `/etc/apache2`: Holds Apache server configurations.
+
+#### Step 2B.3: Fast Backup & Recovery (Optional Safety Net)
+
+To be extra safe during project work, export a copy of your Zabbix database periodically:
+
+```bash
+# Export full database dump
+sudo mysqldump -u zabbix -p'ZabbixDB123!' zabbix > /var/lib/mysql/zabbix_backup.sql
+
+# To restore if database is ever wiped:
+sudo mysql -u zabbix -p'ZabbixDB123!' zabbix < /var/lib/mysql/zabbix_backup.sql
+```
 
 ---
 
@@ -153,34 +180,25 @@ ip link show
 
 Typically it will be `eth0`, `ens3`, or `ens4`. Let's assume `eth0`.
 
-#### For Netplan (Ubuntu 22.04 default):
+#### For GNS3 Docker Containers (`/etc/network/interfaces`):
 
-```bash
-sudo nano /etc/netplan/00-installer-config.yaml
+In GNS3, right-click **VM-Zabbix** → **Edit config**, and set:
+
+```text
+auto eth0
+iface eth0 inet static
+    address 10.10.40.100
+    netmask 255.255.255.0
+    gateway 10.10.40.1
+    up echo "nameserver 8.8.8.8" > /etc/resolv.conf
+    up echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 ```
 
-Replace contents with:
-
-```yaml
-network:
-  version: 2
-  ethernets:
-    eth0:                        # Change to your actual interface name
-      addresses:
-        - 10.10.40.100/24
-      routes:
-        - to: default
-          via: 10.10.40.1        # SW-Core VLAN 40 SVI is the gateway
-      nameservers:
-        addresses:
-          - 8.8.8.8
-          - 8.8.4.4
-```
-
-Apply the configuration:
+Or set DNS inside the running container immediately:
 
 ```bash
-sudo netplan apply
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 ```
 
 #### Verify connectivity:
@@ -203,18 +221,24 @@ ping -c 3 8.8.8.8
 ```
 
 > [!IMPORTANT]
-> If `ping 10.99.99.1` works but `ping 8.8.8.8` fails, VM-ZABBIX might not have internet access. Check:
-> 1. Is `10.10.40.0/24` in R-EDGE's NAT ACL? Looking at your inventory, the NAT `acl_number: 100` only permits `10.99.99.0`, `10.10.10.0`, `10.10.20.0` — **NOT** `10.10.40.0`!
-> 2. You'll need to add `10.10.40.0/24` to the NAT ACL on R-EDGE to give VM-ZABBIX internet access for package downloads:
+> **Troubleshooting `ping 8.8.8.8` (Destination Host Unreachable from 10.0.1.1):**
+> If `ping 8.8.8.8` returns `From 10.0.1.1: Destination Host Unreachable`, R-EDGE cannot forward packets to the Internet. Fix this on **R-EDGE**:
 >
-> ```
-> R-EDGE# configure terminal
-> R-EDGE(config)# access-list 100 permit ip 10.10.40.0 0.0.0.255 any
-> R-EDGE(config)# end
-> R-EDGE# write memory
-> ```
->
-> After Zabbix is installed, you can remove this if DIS shouldn't have permanent internet access.
+> 1. **Add Gateway Next-Hop Default Route** (do NOT use interface-based default route on Ethernet):
+>    ```cisco
+>    R-EDGE# show ip route    ! Check your DHCP default gateway IP on f1/0 (e.g., 192.168.122.1)
+>    R-EDGE(config)# no ip route 0.0.0.0 0.0.0.0 FastEthernet1/0
+>    R-EDGE(config)# ip route 0.0.0.0 0.0.0.0 192.168.122.1  ! Replace with your actual DHCP gateway IP
+>    ```
+> 2. **Allow NAT Cloud Subnet in `ACL-WAN-INBOUND` (Non-destructive addition at sequence 25)**:
+>    ```cisco
+>    R-EDGE(config)# ip access-list extended ACL-WAN-INBOUND
+>    R-EDGE(config-ext-nacl)# 25 permit ip 192.168.0.0 0.0.255.255 any   ! Inserted safely before line 30
+>    ```
+> 3. **Ensure NAT ACL 100 includes DIS subnet**:
+>    ```cisco
+>    R-EDGE(config)# access-list 100 permit ip 10.10.40.0 0.0.0.255 any
+>    ```
 
 ---
 
@@ -222,22 +246,25 @@ ping -c 3 8.8.8.8
 
 Your ACLs are **already designed** to allow Zabbix monitoring traffic. Let's verify what's in place.
 
-### 4.1: ACL-DIS-IN (on SW-Core, VLAN 40 SVI)
+### 4.1: ACL_DIS_IN (on SW-Core, VLAN 40 SVI)
 
-This ACL controls traffic **leaving** the DIS VLAN. Your existing rules already include:
+This ACL controls traffic **leaving** the DIS VLAN. You can insert new Access Control Entries (ACEs) directly into your existing `ACL_DIS_IN` using Cisco sequence numbers **without deleting or replacing the ACL**:
 
+```cisco
+configure terminal
+ip access-list extended ACL_DIS_IN
+ 61 permit icmp host 10.10.40.100 host 10.10.40.1               ! Permit ping to local gateway (10.10.40.1)
+ 62 permit icmp host 10.10.40.100 10.99.99.0 0.0.0.255           ! Permit ping to management switches (10.99.99.1)
+ 63 permit icmp host 10.10.40.100 10.0.0.0 0.0.0.3               ! Permit ping to R-CORE link (10.0.0.2)
+ 64 permit icmp host 10.10.40.100 10.0.1.0 0.0.0.3               ! Permit ping to R-EDGE link
+ 85 permit ip host 10.10.40.100 any                             ! Permit Internet access for Zabbix container (8.8.8.8)
+end
+write memory
 ```
-! Already configured on SW-Core:
-ip access-list extended ACL-DIS-IN
- permit udp host 10.10.40.100 10.99.99.0 0.0.0.255 eq 161    ← SNMP to switches
- permit udp host 10.10.40.100 10.0.0.0 0.0.0.255 eq 161      ← SNMP to R-CORE link
- permit udp host 10.10.40.100 10.0.1.0 0.0.0.255 eq 161      ← SNMP to R-EDGE link
- permit icmp host 10.10.40.100 10.99.99.0 0.0.0.255           ← ICMP ping to switches
- permit icmp host 10.10.40.100 10.0.0.0 0.0.0.255             ← ICMP ping to R-CORE
- permit icmp host 10.10.40.100 10.0.1.0 0.0.0.255             ← ICMP ping to R-EDGE
-```
 
-✅ **This is already perfect for Zabbix SNMP polling and ICMP monitoring.**
+> [!NOTE]
+> **Why this works:**
+> Sequence numbers `61-64` and `85` are inserted **before** line `90 deny ip any any`. Cisco IOS evaluates ACL rules in numerical order, so the pings match these new entries before hitting `deny ip any any`.
 
 ### 4.2: ACL-MGMT-IN (on SW-Core, VLAN 99 SVI)
 
@@ -274,12 +301,16 @@ You may need to add ACL rules for SNMP to the **routed point-to-point subnets** 
 
 ## 5. Install Zabbix 6.0 LTS on Ubuntu 22.04 {#5-install-zabbix}
 
-> [!IMPORTANT]
-> All commands below are run **inside VM-ZABBIX** (the Ubuntu 22.04 machine). Make sure it has internet access first (Step 3.3).
+> [!NOTE]
+> **If using Option B (Docker Container):** You are already logged in as `root` (`root@VM-Zabbix:~#`). Minimal Docker images do not have `sudo` installed. **Omit `sudo`** from all commands below, or install `sudo` via `apt update && apt install -y sudo`.
 
 ### Step 5.1: Update the System
 
 ```bash
+# If running as root (Docker container):
+apt update && apt upgrade -y
+
+# If running as standard user (QEMU VM):
 sudo apt update && sudo apt upgrade -y
 ```
 
@@ -289,14 +320,13 @@ Zabbix needs a database backend. MariaDB is the recommended choice:
 
 ```bash
 # Install MariaDB server
-sudo apt install -y mariadb-server mariadb-client
+apt install -y mariadb-server mariadb-client
 
-# Start and enable MariaDB
-sudo systemctl start mariadb
-sudo systemctl enable mariadb
+# Start MariaDB server (Docker Container):
+service mariadb start
 
 # Secure the installation (set root password, remove test DB, etc.)
-sudo mysql_secure_installation
+mysql_secure_installation
 ```
 
 During `mysql_secure_installation`:
@@ -420,14 +450,16 @@ php_value date.timezone Asia/Colombo
 ### Step 5.8: Start All Services
 
 ```bash
-# Restart and enable all Zabbix services
-sudo systemctl restart zabbix-server zabbix-agent apache2
-sudo systemctl enable zabbix-server zabbix-agent apache2
+# For Docker Containers (Option B):
+service mariadb start
+service zabbix-server start
+service zabbix-agent start
+service apache2 start
 
-# Verify all services are running
-sudo systemctl status zabbix-server
-sudo systemctl status apache2
-sudo systemctl status zabbix-agent
+# Verify status:
+service mariadb status
+service zabbix-server status
+service apache2 status
 ```
 
 All three should show `active (running)`.
