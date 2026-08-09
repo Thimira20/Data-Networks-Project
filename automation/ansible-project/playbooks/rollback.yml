@@ -28,7 +28,10 @@
 # ── Phase 1: Rollback L3 Distribution Config ─────────────────
 - name: "ROLLBACK Phase 1 — Remove L3 distribution config"
   hosts: dist_switches
+  connection: network_cli
   gather_facts: false
+  vars:
+    ansible_network_os: cisco.ios.ios
   tasks:
     # Remove OSPF process
     - name: "Remove OSPF process"
@@ -87,7 +90,10 @@
 # ── Phase 2: Rollback L2 Access Config ───────────────────────
 - name: "ROLLBACK Phase 2 — Remove access switch default gateways"
   hosts: access_switches
+  connection: network_cli
   gather_facts: false
+  vars:
+    ansible_network_os: cisco.ios.ios
   tasks:
     - name: "Remove ip default-gateway"
       cisco.ios.ios_config:
@@ -98,8 +104,10 @@
 # ── Phase 3: Rollback All Switches ───────────────────────────
 - name: "ROLLBACK Phase 3 — Reset all switches to baseline"
   hosts: all_switches
+  connection: network_cli
   gather_facts: false
   vars:
+    ansible_network_os: cisco.ios.ios
     rollback_vlans:
       - 10
       - 20

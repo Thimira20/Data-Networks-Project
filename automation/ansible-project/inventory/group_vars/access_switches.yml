@@ -1,0 +1,36 @@
+# ============================================================
+# inventory/group_vars/access_switches.yml — Access Switch Defaults
+# ============================================================
+# Access switches are PURE LAYER 2 devices:
+#   SW-A-DEIE, SW-A-DCEE, SW-A-DMME, SW-A-DIS
+#
+# Key L2 characteristics:
+#   - ip routing is DISABLED
+#   - ip default-gateway points to the LOCAL distribution switch
+#     (or SW-CORE for SW-A-DIS which has no dist switch)
+#   - Uplinks are standard 802.1Q trunks
+#   - Downlinks are access ports with PortFast
+#
+# Default gateway alignment (from fixed_ping_from_ubunthu.md):
+#   SW-A-DEIE → 10.99.99.11 (SW-D-DEIE)
+#   SW-A-DCEE → 10.99.99.12 (SW-D-DCEE)
+#   SW-A-DMME → 10.99.99.13 (SW-D-DMME)
+#   SW-A-DIS  → 10.99.99.1  (SW-CORE, no dist switch)
+# ============================================================
+
+# ----------------------------------------------------------
+# Layer 2 Configuration Flags
+# ----------------------------------------------------------
+ip_routing: false
+set_default_gateway: true
+
+# ----------------------------------------------------------
+# STP Priority — Access switches should NOT become root
+# ----------------------------------------------------------
+stp_priority: 32768
+
+# ----------------------------------------------------------
+# PortFast — Enable globally on access switches
+# (Individual portfast is also set per access port in roles)
+# ----------------------------------------------------------
+portfast_default: true

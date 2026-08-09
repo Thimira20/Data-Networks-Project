@@ -26,7 +26,10 @@
 # ── Play 1: Create VLANs on ALL switches ─────────────────────
 - name: "Step 1 — Create VLANs on all switches"
   hosts: all_switches
+  connection: network_cli
   gather_facts: false
+  vars:
+    ansible_network_os: cisco.ios.ios
   tags: [vlans]
   roles:
     - vlans
@@ -36,7 +39,10 @@
 # Access: trunk uplinks to distribution switches (or SW-CORE)
 - name: "Step 2 — Configure trunk ports on all switches"
   hosts: all_switches
+  connection: network_cli
   gather_facts: false
+  vars:
+    ansible_network_os: cisco.ios.ios
   tags: [trunking]
   roles:
     - trunking
@@ -44,7 +50,10 @@
 # ── Play 3: Configure access ports (PCs) ─────────────────────
 - name: "Step 3 — Assign access ports to department VLANs"
   hosts: all_switches
+  connection: network_cli
   gather_facts: false
+  vars:
+    ansible_network_os: cisco.ios.ios
   tags: [access_ports]
   roles:
     - access_ports
@@ -52,7 +61,10 @@
 # ── Play 4: Configure Spanning Tree Protocol ─────────────────
 - name: "Step 4 — Configure STP parameters"
   hosts: all_switches
+  connection: network_cli
   gather_facts: false
+  vars:
+    ansible_network_os: cisco.ios.ios
   tags: [stp]
   roles:
     - stp
@@ -63,7 +75,10 @@
 # and Docker return routes.
 - name: "Step 5 — Configure L3 distribution (ip routing, SVIs, OSPF)"
   hosts: dist_switches
+  connection: network_cli
   gather_facts: false
+  vars:
+    ansible_network_os: cisco.ios.ios
   tags: [l3_distribution]
   roles:
     - l3_distribution
@@ -73,7 +88,10 @@
 # Sets ip default-gateway to local distribution switch.
 - name: "Step 6 — Set L2 access switch default gateways"
   hosts: access_switches
+  connection: network_cli
   gather_facts: false
+  vars:
+    ansible_network_os: cisco.ios.ios
   tags: [l2_gateway]
   roles:
     - l2_gateway
@@ -81,7 +99,10 @@
 # ── Play 7: Save configuration to NVRAM ──────────────────────
 - name: "Step 7 — Save configuration (write memory)"
   hosts: all_switches
+  connection: network_cli
   gather_facts: false
+  vars:
+    ansible_network_os: cisco.ios.ios
   tags: [save]
   tasks:
     - name: Save running-config to startup-config

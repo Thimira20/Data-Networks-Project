@@ -1,5 +1,5 @@
 # ============================================================
-# group_vars/all.yml — Variables shared by ALL switches
+# inventory/group_vars/all.yml — Variables shared by ALL switches
 # ============================================================
 # Connection settings, credentials, and VLAN definitions
 # that apply to every switch in the inventory.
@@ -23,8 +23,6 @@ ansible_become_password: admin123
 # ----------------------------------------------------------
 # VLAN Definitions — applied to ALL switches
 # ----------------------------------------------------------
-# These VLANs are created on every switch to ensure
-# consistent VLAN database across the campus network.
 vlans:
   - vlan_id: 10
     name: VLAN_DEIE

@@ -1,8 +1,8 @@
-# Post-Rollback Re-Configuration Guide
+# Post-Rollback Re-Configuration & Recovery Guide
 ## Campus Data Network — FoE-UoR Network Project
 
-> **Document Version:** 1.0  
-> **Target Environment:** GNS3 Campus Topology (R-CORE, R-EDGE, SW-Core, Distribution & Access Switches, VM-Zabbix)  
+> **Document Version:** 2.0  
+> **Target Environment:** GNS3 Campus Topology (R-CORE, R-EDGE, SW-Core, Distribution Switches, Access Switches, Ubuntu Docker / VM-Zabbix)  
 > **Author:** Network Security & Engineering Team — University of Ruhuna  
 
 ---
@@ -12,59 +12,114 @@
 Executing the automated rollback script (`ansible-playbook playbooks/rollback.yml`) strips all automation-applied configurations from the campus network to return devices to a clean, default state. 
 
 ### ⚠ What Rollback Removes:
-1. **VLAN Database:** Deletes non-default VLANs (`VLAN 10 DEIE`, `VLAN 20 DCEE`, `VLAN 30 DMME`, `VLAN 40 DIS`, `VLAN 99 MGMT`, `VLAN 100 NATIVE`).
+1. **VLAN Database:** Deletes non-default VLANs (`VLAN 10 DEIE`, `VLAN 20 DCEE`, `VLAN 30 DMME`, `VLAN 40 DIS`, `VLAN 99 MGMT`, `VLAN 100 NATIVE`) and leaves newly created VLANs in `act/lshut` (Active / Locally Shutdown) state.
 2. **Layer 2 Interface Settings:** Resets all trunk ports, native VLANs, allowed VLAN lists, access port assignments, and Spanning Tree (STP) customizations.
-3. **Layer 3 Routing & SVIs:** Deletes department SVIs, `no ip routing` on distribution switches, removes OSPF process `router ospf 1`, and clears static return routes.
-4. **Access Switch Gateways:** Removes `ip default-gateway` and static default routes from all Layer 2 switches.
+3. **Layer 3 Routing & Uplinks:** Deletes department SVIs, disables IP routing (`no ip routing`), reverts routed uplinks (`Gi0/0`, `Gi0/2`, `Gi0/3`) back to Layer 2 switchports, removes `router ospf 1`, and clears static return routes.
+4. **Access Switch Management & Keys:** Removes `ip default-gateway` from Layer 2 switches and clears SSH RSA Encryption Keys.
 5. **SNMP & Monitoring Settings:** Removes SNMP community strings (`snmp-server community`), severing Zabbix telemetry collection.
 
-### 📉 Impact on Monitoring & Connectivity:
-* **Zabbix Server (`10.10.40.100`):** Loses gateway reachability to `10.10.40.1` and all switch/router targets.
-* **Zabbix Web UI:** All host indicators turn 🔴 **Red (SNMP / ICMP Unavailable)**.
-* **Campus Connectivity:** Inter-VLAN routing is disabled; department hosts are isolated.
+### 📉 Impact on Management & Connectivity:
+* **The "Sawing Off the Branch" Effect:** Because Ansible communicates via SSH over Management VLAN 99, disabling `ip routing` or converting routed uplinks to L2 switchports breaks SSH mid-playbook, triggering 60-second Ansible timeouts.
+* **No Route to Host Errors:** SSH fails with `connect to host 10.99.99.x port 22: No route to host` because SW-CORE's ARP requests are dropped by switches missing active VLAN 99 or having `act/lshut` VLAN status.
+* **Zabbix Telemetry:** All host indicators in Zabbix (`http://10.10.40.100/zabbix`) turn 🔴 **Red (SNMP / ICMP Unavailable)**.
 
 ---
 
-## 2. Post-Rollback Recovery Roadmap
+## 2. Post-Rollback Step-by-Step Recovery Roadmap
 
-To restore full network functionality and bring the **Zabbix Monitoring System** back online after a rollback, follow the manual CLI restoration steps below or run the automated re-deployment suite.
+To restore full network functionality, SSH management, and **Zabbix Monitoring** after a rollback, follow the structured recovery pipeline:
 
 ```mermaid
 graph TD
-    A[Rollback Executed] --> B[Phase 1: Re-create Base VLANs & Trunks]
-    B --> C[Phase 2: Re-configure SVIs & L2/L3 Routing]
-    C --> D[Phase 3: Re-apply ACLs on SW-Core]
-    D --> E[Phase 4: Re-enable SNMP on All Devices]
-    E --> F[Phase 5: Verify Zabbix Telemetry & Dashboard]
+    A[Rollback Executed] --> B[Phase 1: Console Emergency Restoration]
+    B --> C[Phase 2: Step 1 — Router Netmiko Script]
+    C --> D[Phase 3: Step 2 — Switch Ansible Playbook]
+    D --> E[Phase 4: Step 3 — SNMP & Gateway Automation]
+    E --> F[Phase 5: Verification & ACL Validation]
 ```
 
 ---
 
-## 3. Detailed Manual Re-Configuration Steps
+## 3. Phase 1: Manual Console Emergency Restoration
 
-### Phase 1: Re-create Base VLANs & Trunk Links
+Before running automation scripts, SSH connectivity must be restored by pasting emergency console fixes into devices that lost management reachability.
 
-On **SW-Core**, **Distribution Switches** (`SW-D-*`), and **Access Switches** (`SW-A-*`):
+### 1.1 Restore Distribution Switches (`SW-D-DEIE`, `SW-D-DCEE`, `SW-D-DMME`)
 
+Convert uplinks back to Layer 3 routed interfaces and restore OSPF routing:
+
+#### On `SW-D-DEIE` Console:
 ```cisco
+enable
+configure terminal
+interface GigabitEthernet0/0
+ no switchport
+ ip address 10.0.10.2 255.255.255.252
+ no shutdown
+exit
+router ospf 1
+ router-id 3.3.3.11
+ network 10.0.10.0 0.0.0.3 area 0
+ network 10.10.10.0 0.0.0.255 area 0
+ network 10.99.99.0 0.0.0.255 area 0
+exit
+ip route 10.99.99.100 255.255.255.255 10.0.10.1
+end
+write memory
+```
+
+#### On `SW-D-DCEE` Console:
+```cisco
+enable
+configure terminal
+interface GigabitEthernet0/2
+ no switchport
+ ip address 10.0.20.2 255.255.255.252
+ no shutdown
+exit
+router ospf 1
+ router-id 3.3.3.12
+ network 10.0.20.0 0.0.0.3 area 0
+ network 10.10.20.0 0.0.0.255 area 0
+ network 10.99.99.0 0.0.0.255 area 0
+exit
+ip route 10.99.99.100 255.255.255.255 10.0.20.1
+end
+write memory
+```
+
+#### On `SW-D-DMME` Console:
+```cisco
+enable
+configure terminal
+interface GigabitEthernet0/3
+ no switchport
+ ip address 10.0.30.2 255.255.255.252
+ no shutdown
+exit
+router ospf 1
+ router-id 3.3.3.13
+ network 10.0.30.0 0.0.0.3 area 0
+ network 10.10.30.0 0.0.0.255 area 0
+ network 10.99.99.0 0.0.0.255 area 0
+exit
+ip route 10.99.99.100 255.255.255.255 10.0.30.1
+end
+write memory
+```
+
+---
+
+### 1.2 Restore Access Switches (`SW-A-DIS`, `SW-A-DEIE`, `SW-A-DCEE`, `SW-A-DMME`)
+
+Fix `act/lshut` VLAN status, generate RSA SSH key, and set default gateways:
+
+#### On `SW-A-DIS` Console (and other access switches if unreachable):
+```cisco
+enable
 configure terminal
 
-! 1. Create Campus VLANs
-vlan 10
- name VLAN_DEIE
-vlan 20
- name VLAN_DCEE
-vlan 30
- name VLAN_DMME
-vlan 40
- name VLAN_DIS
-vlan 99
- name MGMT
-vlan 100
- name NATIVE
-exit
-
-! 2. Re-configure Trunk Port to SW-Core / Neighbors (e.g. Gi1/0)
+! 1. Fix Trunk Uplink to SW-CORE
 interface GigabitEthernet1/0
  switchport trunk encapsulation dot1q
  switchport mode trunk
@@ -72,83 +127,53 @@ interface GigabitEthernet1/0
  switchport trunk allowed vlan 10,20,30,40,99,100
  no shutdown
 exit
-```
 
----
+! 2. Re-create VLANs and remove 'act/lshut' (Locally Shutdown) block
+vlan 99
+ name MGMT
+ state active
+ no shutdown
+exit
+vlan 10
+ name VLAN_DEIE
+ state active
+ no shutdown
+exit
+vlan 20
+ name VLAN_DCEE
+ state active
+ no shutdown
+exit
+vlan 30
+ name VLAN_DMME
+ state active
+ no shutdown
+exit
+vlan 40
+ name VLAN_DIS
+ state active
+ no shutdown
+exit
+vlan 100
+ name NATIVE
+ state active
+ no shutdown
+exit
 
-### Phase 2: Re-configure Layer 3 SVIs & Routing
-
-#### 2.1 On `SW-Core` (Core L3 Switch):
-```cisco
-configure terminal
-ip routing
-
-! Management SVI
+! 3. Restore Management SVI & Default Gateway
 interface Vlan99
- ip address 10.99.99.1 255.255.255.0
+ ip address 10.99.99.24 255.255.255.0  ! Replace with device IP
  no shutdown
 exit
-
-! DIS Monitoring SVI (Zabbix Subnet)
-interface Vlan40
- ip address 10.10.40.1 255.255.255.0
- no shutdown
-exit
-
-! OSPF Routing Process
-router ospf 1
- router-id 10.99.99.1
- network 10.99.99.0 0.0.0.255 area 0
- network 10.10.40.0 0.0.0.255 area 0
-exit
-end
-write memory
-```
-
-#### 2.2 On Layer 2 Access Switches (`SW-A-DIS`, `SW-A-DEIE`, etc.):
-```cisco
-configure terminal
-
-! Management SVI
-interface Vlan99
- ip address 10.99.99.24 255.255.255.0  ! Replace with device Management IP
- no shutdown
-exit
-
-! Default Gateway (L2 mode) & Static Route (Cisco IOS GNS3 requirement)
 ip default-gateway 10.99.99.1
-ip route 0.0.0.0 0.0.0.0 10.99.99.1
-end
-write memory
-```
 
----
-
-### Phase 3: Re-apply ACLs on `SW-Core` for Zabbix Traffic
-
-To ensure `VM-Zabbix` (`10.10.40.100`) can poll management devices and receive return traffic across VLANs:
-
-```cisco
-configure terminal
-
-! Permit Zabbix outbound SNMP & ICMP to Management VLAN
-ip access-list extended ACL_DIS_IN
- 40 permit udp host 10.10.40.100 10.99.99.0 0.0.0.255 eq snmp
- 62 permit icmp host 10.10.40.100 10.99.99.0 0.0.0.255
- 85 permit ip host 10.10.40.100 any
-exit
-
-! CRITICAL: Permit return traffic from Management VLAN back to Zabbix
-ip access-list extended ACL_MGMT_IN
- 15 permit ip 10.99.99.0 0.0.0.255 host 10.10.40.100
-exit
-
-! Apply ACLs to SVIs
-interface Vlan40
- ip access-group ACL_DIS_IN in
-exit
-interface Vlan99
- ip access-group ACL_MGMT_IN in
+! 4. Generate SSH RSA Keys & Enable SSH
+ip domain-name campus.uor.lk
+crypto key generate rsa modulus 2048
+username admin privilege 15 secret admin123
+line vty 0 4
+ transport input ssh
+ login local
 exit
 
 end
@@ -157,80 +182,55 @@ write memory
 
 ---
 
-### Phase 4: Re-enable SNMP Monitoring on All Devices
+## 4. Phase 2: Automated Re-Deployment Suite (Exact Order)
 
-SNMP must be re-enabled on **all 10 devices** (`R-CORE`, `R-EDGE`, `SW-Core`, all Distribution and Access Switches):
+Once SSH is functional across all management IPs (`10.99.99.x`), execute the 3-step automation sequence:
 
-```cisco
-configure terminal
-snmp-server community public RO
-end
-write memory
-```
-
----
-
-### Phase 5: Re-verify Zabbix Web UI & Tunneling
-
-1. **Verify Connectivity from `VM-Zabbix` Container:**
-   ```bash
-   # Ping gateway
-   ping -c 2 10.10.40.1
-
-   # Ping SW-Core Management SVI
-   ping -c 2 10.99.99.1
-
-   # Ping Access Switch
-   ping -c 2 10.99.99.24
-
-   # Test SNMP walk
-   snmpwalk -v2c -c public 10.99.99.1 sysDescr.0
-   ```
-
-2. **Ensure GNS3 VM Port-Forwarding (`socat`) is Active:**
-   If host browser access to `http://192.168.255.128:9090/zabbix` is interrupted, re-run on **`gns3@gns3vm`**:
-   ```bash
-   ZABBIX_PID=$(docker inspect -f '{{.State.Pid}}' $(docker ps -q --filter name=Zabbix))
-   sudo socat TCP-LISTEN:9090,fork,reuseaddr EXEC:"sudo nsenter -t $ZABBIX_PID -n nc 127.0.0.1 80" &
-   ```
-
-3. **Check Zabbix Web Dashboard:**
-   * Go to **Monitoring → Hosts**.
-   * Verify all devices (`R-CORE`, `R-EDGE`, `SW-Core`, `SW-A-DIS`) display 🟢 **Green (SNMP)**.
-
----
-
-## 4. Automated Re-Deployment Alternative (Fastest)
-
-Rather than executing manual CLI commands on every device, execute the full automation pipeline from your management machine:
-
+### Step 1: Configure Core & Edge Routers
 ```bash
-cd /home/security_analysis/network/github-repo/Data-Networks-Project/automation
+cd /home/security_analysis/network/github-repo/Data-Networks-Project/automation/netmiko-automation
+python3 01_configure_routers.py
+```
+* **Function:** Pushes WAN/LAN interface IP addresses, sub-interfaces, static routes, NAT, and core OSPF routing to `R-CORE` and `R-EDGE`.
 
-# 1. Re-configure Core & Edge Routers via Netmiko
-python3 netmiko-automation/01_configure_routers.py
+### Step 2: Deploy Full Switch Infrastructure via Ansible
+```bash
+cd ../ansible-project
+ansible-playbook site.yml
+```
+* **Function:** Executes 7 structured plays across all switches:
+  1. Creates VLANs (10, 20, 30, 40, 99, 100).
+  2. Configures trunk links with 802.1Q encapsulation and allowed VLANs.
+  3. Assigns access ports to department VLANs with PortFast enabled.
+  4. Configures Spanning Tree (Rapid PVST+) and priorities (24576 for distribution, 32768 for access).
+  5. Enables Layer 3 distribution routing (`ip routing`, SVIs, OSPF process 1).
+  6. Configures Layer 2 default gateways.
+  7. Saves configuration to startup-config (`write memory`).
 
-# 2. Re-apply Switch VLANs, Trunks, SVIs, and OSPF via Ansible
-cd ansible-project
-ansible-playbook playbooks/site.yml
-
-# 3. Re-configure SNMP across all 10 devices
+### Step 3: Enable SNMP Telemetry & Zabbix L2 Gateway Return Routes
+```bash
 cd ../netmiko-automation
 python3 02_configure_snmp_all.py
-
-# 4. Verify full configuration
-python3 03_verify_config.py
 ```
+* **Function:** Applies SNMPv2c read-only community `public`, trap host destination (`10.10.40.100`), and pushes static return routes on L2 switches for full Zabbix telemetry collection.
 
 ---
 
-## 5. Verification Checklist
+## 5. Phase 3: Verification & Security Policy Validation
+
+### 5.1 Verification Checklist
 
 | Verification Task | Command / Location | Expected Result | Status |
 | :--- | :--- | :--- | :---: |
-| **VLAN Existence** | `SW-Core# show vlan brief` | VLANs 10, 20, 30, 40, 99, 100 Active | ☐ |
-| **Trunk Status** | `SW-A-DIS# show interfaces trunk` | Trunking dot1q, VLAN 99 allowed | ☐ |
-| **L2 Default Route** | `SW-A-DIS# show ip route` | `0.0.0.0/0 via 10.99.99.1` | ☐ |
-| **Zabbix Ping** | `VM-Zabbix$ ping 10.99.99.24` | `0% packet loss` | ☐ |
-| **SNMP Response** | `VM-Zabbix$ snmpwalk -v2c -c public 10.99.99.1` | Cisco IOS System Description returned | ☐ |
-| **Zabbix UI Status** | `http://192.168.255.128:9090/zabbix` | Hosts display 🟢 **Green (SNMP)** | ☐ |
+| **Switch SSH Access** | `ssh admin@10.99.99.11` | Successful login with password `admin123` | ✅ |
+| **VLAN Database** | `SW-A-DIS# show vlan brief` | VLANs 10, 20, 30, 40, 99, 100 **active** (not `act/lshut`) | ✅ |
+| **Ansible Playbook Recap** | `ansible-playbook site.yml` | `failed=0` across all 7 switches | ✅ |
+| **Inter-Department ACL Enforcement** | `PC1> ping 10.10.30.10` | `*10.10.10.1 ... Communication administratively prohibited` | ✅ |
+| **Inter-Department Allowed Traffic** | `PC1> ping 10.10.40.10` | `100% success` | ✅ |
+| **Zabbix Web UI Dashboard** | `http://10.10.40.100/zabbix` | All 10 hosts display 🟢 **Green (SNMP Available)** | ✅ |
+
+### 5.2 Explaining ICMP "Communication Administratively Prohibited"
+
+During verification from `PC1` (VLAN 10 DEIE):
+* `PC1 > ping 10.10.30.10` returns `*10.10.10.1 icmp_seq=1 ... (ICMP type:3, code:13, Communication administratively prohibited)`
+* **Significance:** ICMP Type 3 Code 13 is **definitive proof** that Inter-VLAN routing is active and `SW-D-DEIE` is enforcing extended ACL (`ACL_DEIE_IN`), blocking unauthorized communication to DMME (`10.10.30.0/24`) while allowing DIS server access (`10.10.40.0/24`).
