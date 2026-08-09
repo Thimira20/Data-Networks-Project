@@ -17,10 +17,11 @@
 # Applied to: access_switches group only
 # ============================================================
 ---
-# ── Step 1: Set ip default-gateway ────────────────────────────
-- name: "L2 Gateway — Set ip default-gateway"
+# ── Step 1: Set ip default-gateway and static default route ────
+- name: "L2 Gateway — Set ip default-gateway and static route"
   cisco.ios.ios_config:
     lines:
       - "ip default-gateway {{ default_gateway }}"
+      - "ip route 0.0.0.0 0.0.0.0 {{ default_gateway }}"
   when: default_gateway is defined
   tags: [l2_gateway]

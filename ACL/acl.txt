@@ -1,0 +1,125 @@
+SW-D-DEIE#show ip access-lists
+Extended IP access list ACL_DEIE_IN
+    10 permit ip 10.10.10.0 0.0.0.255 10.10.40.0 0.0.0.255 (25 matches)
+    20 permit ip 10.10.10.0 0.0.0.255 10.0.0.0 0.0.0.3
+    30 permit ip 10.10.10.0 0.0.0.255 10.0.1.0 0.0.0.3
+    40 deny ip any any (16 matches)
+Extended IP access list CISCO-CWA-URL-REDIRECT-ACL
+    100 deny udp any any eq domain
+    101 deny tcp any any eq domain
+    102 deny udp any eq bootps any
+    103 deny udp any any eq bootpc
+    104 deny udp any eq bootpc any
+    105 permit tcp any any eq www
+Extended IP access list preauth_ipv4_acl (per-user)
+    10 permit udp any any eq domain
+    20 permit tcp any any eq domain
+    30 permit udp any eq bootps any
+    40 permit udp any any eq bootpc
+    50 permit udp any eq bootpc any
+    60 deny ip any any
+
+
+
+
+Extended IP access list ACL_DCEE_IN
+    10 permit tcp 10.10.20.0 0.0.0.255 10.10.40.0 0.0.0.255 eq www
+    20 permit tcp 10.10.20.0 0.0.0.255 10.10.40.0 0.0.0.255 eq 443
+    30 deny ip 10.10.20.0 0.0.0.255 10.10.10.0 0.0.0.255
+    40 permit ip 10.10.20.0 0.0.0.255 10.0.0.0 0.0.0.3
+    50 permit ip 10.10.20.0 0.0.0.255 10.0.1.0 0.0.0.3
+    60 deny ip any any (2 matches)
+Extended IP access list CISCO-CWA-URL-REDIRECT-ACL
+    100 deny udp any any eq domain
+    101 deny tcp any any eq domain
+    102 deny udp any eq bootps any
+    103 deny udp any any eq bootpc
+    104 deny udp any eq bootpc any
+    105 permit tcp any any eq www
+Extended IP access list preauth_ipv4_acl (per-user)
+    10 permit udp any any eq domain
+    20 permit tcp any any eq domain
+    30 permit udp any eq bootps any
+    40 permit udp any any eq bootpc
+    50 permit udp any eq bootpc any
+    60 deny ip any any
+SW-D-DCEE#
+
+
+
+
+Extended IP access list ACL_DMME_IN
+    10 deny ip 10.10.30.0 0.0.0.255 10.10.40.0 0.0.0.255
+    20 deny ip 10.10.30.0 0.0.0.255 10.10.20.0 0.0.0.255
+    30 deny ip any any
+Extended IP access list CISCO-CWA-URL-REDIRECT-ACL
+    100 deny udp any any eq domain
+    101 deny tcp any any eq domain
+    102 deny udp any eq bootps any
+    103 deny udp any any eq bootpc
+    104 deny udp any eq bootpc any
+    105 permit tcp any any eq www
+Extended IP access list preauth_ipv4_acl (per-user)
+    10 permit udp any any eq domain
+    20 permit tcp any any eq domain
+    30 permit udp any eq bootps any
+    40 permit udp any any eq bootpc
+    50 permit udp any eq bootpc any
+    60 deny ip any any
+
+
+
+SW-A-DIS#show ip access-lists
+Extended IP access list CISCO-CWA-URL-REDIRECT-ACL
+    100 deny udp any any eq domain
+    101 deny tcp any any eq domain
+    102 deny udp any eq bootps any
+    103 deny udp any any eq bootpc
+    104 deny udp any eq bootpc any
+    105 permit tcp any any eq www
+Extended IP access list preauth_ipv4_acl (per-user)
+    10 permit udp any any eq domain
+    20 permit tcp any any eq domain
+    30 permit udp any eq bootps any
+    40 permit udp any any eq bootpc
+    50 permit udp any eq bootpc any
+    60 deny ip any any
+
+
+SW-Core#show ip access-lists
+Extended IP access list ACL-MGMT-IN
+    10 permit tcp 10.99.99.0 0.0.0.255 10.99.99.0 0.0.0.255 eq 22 (48993 matches)
+    15 permit ip 10.99.99.0 0.0.0.255 any (47238 matches)
+    20 permit tcp 10.99.99.0 0.0.0.255 10.0.0.0 0.0.0.255 eq 22
+    30 permit tcp 10.99.99.0 0.0.0.255 10.0.1.0 0.0.0.255 eq 22
+    40 permit tcp 10.99.99.0 0.0.0.255 10.0.10.0 0.0.0.3 eq 22
+    50 permit tcp 10.99.99.0 0.0.0.255 10.0.20.0 0.0.0.3 eq 22
+    60 permit tcp 10.99.99.0 0.0.0.255 10.0.30.0 0.0.0.3 eq 22
+    70 permit udp 10.99.99.0 0.0.0.255 host 10.10.40.100 eq snmptrap
+    80 permit udp 10.99.99.0 0.0.0.255 host 10.10.40.100 eq snmp
+    90 permit icmp 10.99.99.0 0.0.0.255 host 10.10.40.100
+    100 permit icmp 10.99.99.0 0.0.0.255 10.99.99.0 0.0.0.255 (25 matches)
+    110 permit icmp 10.99.99.0 0.0.0.255 10.0.0.0 0.0.0.3
+    120 permit icmp 10.99.99.0 0.0.0.255 10.0.1.0 0.0.0.3
+    130 permit icmp 10.99.99.0 0.0.0.255 10.0.10.0 0.0.0.3
+    140 permit icmp 10.99.99.0 0.0.0.255 10.0.20.0 0.0.0.3
+    150 permit icmp 10.99.99.0 0.0.0.255 10.0.30.0 0.0.0.3
+    160 deny ip 10.99.99.0 0.0.0.255 10.10.10.0 0.0.0.255
+    170 deny ip 10.99.99.0 0.0.0.255 10.10.20.0 0.0.0.255
+    180 deny ip 10.99.99.0 0.0.0.255 10.10.30.0 0.0.0.255
+    190 deny ip 10.99.99.0 0.0.0.255 10.10.40.0 0.0.0.255
+    200 deny ip 10.99.99.0 0.0.0.255 any (149 matches)
+Extended IP access list ACL_DIS_IN
+    10 permit udp host 10.10.40.100 10.10.10.0 0.0.0.255 eq snmp
+    20 permit udp host 10.10.40.100 10.10.20.0 0.0.0.255 eq snmp
+    30 permit udp host 10.10.40.100 10.10.30.0 0.0.0.255 eq snmp
+    40 permit udp host 10.10.40.100 10.99.99.0 0.0.0.255 eq snmp (938 matches)
+    50 permit udp host 10.10.40.100 10.0.0.0 0.0.0.3 eq snmp (298 matches)
+    60 permit udp host 10.10.40.100 10.0.1.0 0.0.0.3 eq snmp (323 matches)
+    61 permit icmp host 10.10.40.100 host 10.10.40.1 (6 matches)
+    62 permit icmp host 10.10.40.100 10.99.99.0 0.0.0.255 (1038 matches)
+    63 permit icmp host 10.10.40.100 10.0.0.0 0.0.0.3 (607 matches)
+    64 permit icmp host 10.10.40.100 10.0.1.0 0.0.0.3 (369 matches)
+    70 permit ip 10.10.40.0 0.0.0.255 10.10.10.0 0.0.0.255 (24 matches)
+    80 permit tcp 10.10.40.0 0.0.0.255 10.10.20.0 0.0.0.255 established
+    85 permit ip host 10.10.40.100 any (146084 matches)

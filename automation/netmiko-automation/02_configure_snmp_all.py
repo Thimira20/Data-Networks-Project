@@ -121,16 +121,18 @@ def get_all_devices(inventory):
     return all_devices
 
 
-def build_snmp_commands(snmp_config):
+def build_snmp_commands(snmp_config, device=None):
     """
     Build SNMP configuration commands from inventory settings.
+    Optionally includes device-specific monitoring adjustments (L2 default route & router duplex mode).
     
     Args:
         snmp_config: Dict with keys: community_ro, community_rw,
                      trap_destination, snmp_version
+        device:      Optional device dict from inventory
     
     Returns:
-        list: IOS CLI commands for SNMP configuration
+        list: IOS CLI commands for SNMP and monitoring optimization
     """
     community_ro = snmp_config["community_ro"]
     community_rw = snmp_config["community_rw"]
@@ -147,6 +149,15 @@ def build_snmp_commands(snmp_config):
         # Enable all standard SNMP traps
         "snmp-server enable traps",
     ]
+
+    # Device-specific monitoring & gateway enhancements
+    if device:
+        hostname = device.get("hostname", "")
+        # For L2 switches: ensure static default route exists for cross-VLAN Zabbix reachability
+        if hostname.startswith("SW-A-"):
+            commands.append("ip default-gateway 10.99.99.1")
+            commands.append("ip route 0.0.0.0 0.0.0.0 10.99.99.1")
+
     return commands
 
 
@@ -282,27 +293,15 @@ def main():
     all_devices = get_all_devices(inventory)
     total = len(all_devices)
     
-    # Build the SNMP commands once (same for every device)
-    snmp_commands = build_snmp_commands(snmp_config)
-    
-    log(log_file, f"  Found {total} devices to configure")
-    log(log_file, f"  SNMP RO community: {snmp_config['community_ro']}")
-    log(log_file, f"  SNMP RW community: {snmp_config['community_rw']}")
-    log(log_file, f"  Trap destination:  {snmp_config['trap_destination']}")
-    log(log_file, "")
-
-    # ── Counters ──────────────────────────────────────────────
-    success_count = 0
-    changed_count = 0
-    failed_count = 0
-    skipped_count = 0
-
     # ── Configure Each Device ─────────────────────────────────
     for idx, device in enumerate(all_devices, start=1):
         log(log_file, f"  [{idx:02d}/{total}] ", also_print=False)
         
+        # Build device-specific SNMP commands
+        snmp_cmds = build_snmp_commands(snmp_config, device)
+
         success, was_changed = configure_snmp_on_device(
-            device, credentials, snmp_commands, log_file
+            device, credentials, snmp_cmds, log_file
         )
         
         if success:

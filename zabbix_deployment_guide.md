@@ -201,6 +201,17 @@ echo "nameserver 8.8.8.8" > /etc/resolv.conf
 echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 ```
 
+#### Fix Stalled/Freezing Downloads (MTU Issue in GNS3):
+
+If downloads freeze or stall at `--.-KB/s` (e.g. at 36%), set the MTU on `eth0` inside **VM-Zabbix**:
+
+```bash
+ip link set dev eth0 mtu 1350
+```
+
+> [!TIP]
+> Setting MTU to `1350` prevents TCP packet fragmentation issues across GNS3 virtual routers and NAT clouds.
+
 #### Verify connectivity:
 
 ```bash
@@ -371,18 +382,51 @@ QUIT;
 
 ### Step 5.4: Install Zabbix 6.0 LTS Packages
 
+> [!NOTE]
+> 1. Minimal Docker images do not include `wget` by default.
+> 2. Force `apt` to use IPv4 to prevent IPv6 network unreachable timeouts in GNS3.
+> 3. If your container uses Ubuntu 24.04 (`noble`), use `zabbix-release_latest+ubuntu24.04_all.deb`. For Ubuntu 22.04 (`jammy`), use `zabbix-release_latest+ubuntu22.04_all.deb`.
+
 ```bash
-# Download and install the Zabbix repository configuration package
-wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.0-5+ubuntu22.04_all.deb
+# 1. Force apt to use IPv4 (prevents IPv6 connection timeouts)
+echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
-sudo dpkg -i zabbix-release_6.0-5+ubuntu22.04_all.deb
+# 2. Install wget
+apt update && apt install -y wget
 
-# Update apt to include the new Zabbix repository
-sudo apt update
+# 3. Download and install Zabbix repository package:
+# For Ubuntu 24.04 (Noble):
+wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest+ubuntu24.04_all.deb
+dpkg -i zabbix-release_latest+ubuntu24.04_all.deb
 
-# Install Zabbix server, web frontend, and agent
-sudo apt install -y zabbix-server-mysql zabbix-frontend-php zabbix-apache-conf zabbix-sql-scripts zabbix-agent
+# (OR for Ubuntu 22.04 Jammy):
+# wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest+ubuntu22.04_all.deb
+# dpkg -i zabbix-release_latest+ubuntu22.04_all.deb
+
+# 4. Update apt index to include the new Zabbix repository
+apt update
+
+# 5. Install Zabbix server, web frontend, and agent
+apt install -y zabbix-server-mysql zabbix-frontend-php zabbix-apache-conf zabbix-sql-scripts zabbix-agent
 ```
+
+> [!TIP]
+> **Troubleshooting `Connection timed out` during `apt install`:**
+> If GNS3's slow network speeds (20 kB/s) cause `apt` to time out on `repo.zabbix.com`, download the 5 Zabbix packages directly with `wget` (which handles slow links much better) and install them manually:
+>
+> ```bash
+> mkdir -p /tmp/zabbix-pkgs && cd /tmp/zabbix-pkgs
+> rm -f *.deb
+>
+> wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix/zabbix-server-mysql_6.0.48-1%2bubuntu24.04_amd64.deb
+> wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix/zabbix-frontend-php_6.0.48-1%2bubuntu24.04_all.deb
+> wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix/zabbix-apache-conf_6.0.48-1%2bubuntu24.04_all.deb
+> wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix/zabbix-sql-scripts_6.0.48-1%2bubuntu24.04_all.deb
+> wget https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix/zabbix-agent_6.0.48-1%2bubuntu24.04_amd64.deb
+>
+> dpkg -i *.deb
+> apt install -f -y
+> ```
 
 **What each package does:**
 | Package | Purpose |
@@ -447,55 +491,96 @@ php_value date.timezone Asia/Colombo
 > [!NOTE]
 > `Asia/Colombo` is the timezone for Sri Lanka (UTC+5:30). This matches your system time.
 
-### Step 5.8: Start All Services
+### Step 5.8: Start All Services and Fix Locales
 
 ```bash
-# For Docker Containers (Option B):
+# Start all Zabbix and web services:
 service mariadb start
 service zabbix-server start
 service zabbix-agent start
 service apache2 start
 
-# Verify status:
+# Verify status (all should show active running):
 service mariadb status
 service zabbix-server status
 service apache2 status
 ```
 
-All three should show `active (running)`.
+> [!TIP]
+> **Fixing "Locale for language en_US is not found" UI Warnings:**
+> Minimal Ubuntu Docker containers do not include system locales by default. Run this inside **VM-Zabbix**:
+> ```bash
+> apt update && apt install -y locales
+> locale-gen en_US.UTF-8
+> service apache2 restart
+> ```
 
-### Step 5.9: Complete the Web Setup Wizard
+### Step 5.9: Complete or Bypass the Web Setup Wizard
 
-1. Open a web browser **from a PC that can reach `10.10.40.100`**
-   - From your host machine: `http://10.10.40.100/zabbix`
-   - If using GNS3 with NAT, you may need to access via the GNS3 VM's IP
+You can complete setup either via the Browser Setup Wizard or directly via Command-Line.
 
-2. The Zabbix setup wizard appears:
-   - **Step 1 — Welcome:** Click "Next step"
-   - **Step 2 — Prerequisites:** All should show green ✅. If any fail, install the missing PHP module
-   - **Step 3 — Database:** 
-     - Database type: `MySQL`
-     - Database host: `localhost`
-     - Database port: `0` (default)
-     - Database name: `zabbix`
-     - Database user: `zabbix`
-     - Database password: `ZabbixDB123!`
-   - **Step 4 — Zabbix server:**
-     - Host: `localhost`
-     - Port: `10051`
-     - Name: `FoE-UoR Zabbix Server`
-   - **Step 5 — GUI settings:**
-     - Default time zone: `Asia/Colombo`
-     - Default theme: `Dark` (looks better for presentations!)
-   - **Step 6 — Summary:** Review and click "Next step"
-   - **Step 7 — Complete!** Click "Finish"
+#### Method A: Automated CLI Config Creation (Recommended for GNS3 Docker Containers ⭐)
 
-3. **Login credentials:**
-   - Username: `Admin` (capital A!)
-   - Password: `zabbix`
+Since graphical browsers are not always available inside GNS3 containers, you can bypass the web wizard by creating `/etc/zabbix/web/zabbix.conf.php` directly inside **VM-Zabbix**:
+
+```bash
+cat > /etc/zabbix/web/zabbix.conf.php << 'EOF'
+<?php
+$DB['TYPE']     = 'MYSQL';
+$DB['SERVER']   = 'localhost';
+$DB['PORT']     = '0';
+$DB['DATABASE'] = 'zabbix';
+$DB['USER']     = 'zabbix';
+$DB['PASSWORD'] = 'ZabbixDB123!';
+$DB['SCHEMA']   = '';
+$DB['ENCRYPTION'] = false;
+$DB['KEY_FILE'] = '';
+$DB['CERT_FILE'] = '';
+$DB['CA_FILE'] = '';
+$DB['VERIFY_HOST'] = false;
+$DB['CIPHER_LIST'] = '';
+$DB['DOUBLE_IEEE754'] = true;
+
+$ZBX_SERVER      = 'localhost';
+$ZBX_SERVER_PORT = '10051';
+$ZBX_SERVER_NAME = 'FoE-UoR Campus Monitoring';
+
+$IMAGE_FORMAT_DEFAULT = IMAGE_FORMAT_PNG;
+
+date_default_timezone_set('Asia/Colombo');
+EOF
+
+# Set proper ownership and restart Apache
+chown www-data:www-data /etc/zabbix/web/zabbix.conf.php
+service apache2 restart
+```
+
+---
+
+#### Accessing the Web UI from your Host Browser (`http://192.168.255.128:9090/zabbix`)
+
+Because GNS3 network ACLs/NAT can block outside HTTP traffic, use `socat` + `nsenter` on the GNS3 VM (`gns3@192.168.255.128`) to forward host port `9090` directly into the `VM-Zabbix` container:
+
+```bash
+# 1. On gns3vm, install socat:
+sudo apt update && sudo apt install -y socat
+
+# 2. Get the VM-Zabbix container PID:
+ZABBIX_PID=$(docker inspect -f '{{.State.Pid}}' $(docker ps -q --filter name=Zabbix))
+
+# 3. Start the port forwarder on GNS3 VM:
+sudo socat TCP-LISTEN:9090,fork,reuseaddr EXEC:"sudo nsenter -t $ZABBIX_PID -n nc 127.0.0.1 80" &
+```
+
+Now open Firefox on your host PC and navigate to:
+👉 **`http://192.168.255.128:9090/zabbix`**
+
+#### Login Credentials:
+- **Username:** `Admin` (capital A!)
+- **Password:** `zabbix`
 
 > [!CAUTION]
-> **Change the default password immediately!** Go to: User icon (top-right) → User settings → Change password.
+> **Change default password immediately!** Go to: User icon (top-right) → User settings → Change password.
 
 ---
 
@@ -587,7 +672,7 @@ Repeat Step 6.3 for every device. Here's the reference table:
 > - Add: `{$SNMP_COMMUNITY}` = `public`
 > - Now all hosts inherit this value automatically.
 
-### 6.5: Verify Host Connectivity
+### 6.5: Verify Host Connectivity and Troubleshooting
 
 After adding all hosts, wait 2–3 minutes for initial discovery, then:
 
@@ -596,14 +681,47 @@ After adding all hosts, wait 2–3 minutes for initial discovery, then:
    - 🟢 Green `SNMP` icon = device is responding to SNMP polls ✅
    - 🔴 Red `SNMP` icon = device is unreachable ❌ → check ACLs and routing
 
-3. If any host shows red, troubleshoot from VM-ZABBIX:
+---
+
+#### 🛠️ Common Issue 1: Access Switches (`SW-A-DIS`, `SW-A-DEIE`, etc.) Show Red SNMP
+If Layer 2 Access Switches show **Red SNMP / ICMP Unavailable**:
+
+1. **Add Static Default Route on L2 Switch:**
+   Cisco IOS switch images in GNS3 require an explicit static route to return traffic across VLANs:
+   ```cisco
+   SW-A-DIS(config)# ip route 0.0.0.0 0.0.0.0 10.99.99.1
+   ```
+2. **Permit Return Traffic in `ACL_MGMT_IN` on `SW-Core`:**
+   Ensure `SW-Core` permits Management VLAN 99 to respond to `VM-Zabbix` (`10.10.40.100`):
+   ```cisco
+   SW-Core(config)# ip access-list extended ACL_MGMT_IN
+   SW-Core(config-ext-nacl)# 15 permit ip 10.99.99.0 0.0.0.255 host 10.10.40.100
+   ```
+
+---
+
+#### 🛠️ Common Issue 2: "Interface Fa0/0: In half-duplex mode" Warning
+In GNS3, router FastEthernet interfaces default to auto-negotiation or half-duplex mode.
+
+To resolve the Zabbix warning, configure full duplex on the router interfaces:
+
+```cisco
+R-CORE(config)# interface FastEthernet0/0
+R-CORE(config-if)# duplex full
+R-CORE(config-if)# interface FastEthernet0/1
+R-CORE(config-if)# duplex full
+R-CORE(config-if)# interface FastEthernet1/0
+R-CORE(config-if)# duplex full
+R-CORE(config-if)# end
+R-CORE# write memory
+```
+*(Repeat on `R-EDGE` as well)*
+
+---
 
 ```bash
-# Test SNMP connectivity manually
+# Test SNMP connectivity manually from VM-ZABBIX:
 snmpwalk -v2c -c public 10.99.99.1 sysDescr.0
-
-# Expected output (example):
-# SNMPv2-MIB::sysDescr.0 = STRING: Cisco IOS Software, ...
 ```
 
 If `snmpwalk` isn't installed:
@@ -703,72 +821,60 @@ Repeat for all devices.
 ### Step 8.1: Create the Dashboard
 
 1. Go to: **Monitoring → Dashboards**
-2. Click: **Create dashboard**
+2. Click: **Create dashboard** (top-right blue button)
 3. **Name:** `FoE-UoR Network`
 4. Click **Apply**
 
-### Step 8.2: Add Widget — Host Availability Map
+---
 
-This shows all your devices with green/red indicators.
+### Step 8.2: Add Widget 1 — Campus Device Status
 
-1. Click **Edit dashboard** → **Add widget**
+This widget provides an at-a-glance status of all campus network devices:
+
+1. Click **Add widget**
 2. Configure:
-   - **Type:** `Geomap` or `Host navigator` or `Problems by severity`
-   
-   For a cleaner **availability map** style:
    - **Type:** `Host availability`
-   - **Name:** `Device Availability`
+   - **Name:** `Campus Device Status`
    - **Host groups:** Select `FoE Routers`, `FoE Distribution Switches`, `FoE Access Switches`
    - **Interface type:** `SNMP`
+   - **Layout:** Vertical / Horizontal cards
+3. Click **Add**
 
-   **Alternatively, use a "Map" widget with a custom network map:**
-   1. First create a map: **Monitoring → Maps → Create map**
-   2. Name: `FoE Campus Topology`
-   3. Add elements for each device, connecting them with links
-   4. Then add it as a widget: Type = `Map`, Map = `FoE Campus Topology`
+---
 
-### Step 8.3: Add Widget — Interface Traffic Graphs for Core Devices
+### Step 8.3: Add Widget 2 — Live Network Alerts
 
-1. Click **Add widget**
-2. Configure:
-   - **Type:** `Graph (classic)` or `Graph prototype`
-   - **Name:** `R-CORE Traffic — Fa0/0 (to R-EDGE)`
-   - **Resource → Graph:** Select the auto-discovered interface graph for R-CORE's `Fa0/0`
-
-3. Repeat for key interfaces:
-   - `R-CORE Fa1/0` (to SW-Core)
-   - `R-EDGE Fa0/0` (to R-CORE)
-   - `R-EDGE Fa1/0` (to Internet)
-   - `SW-Core Gi0/1` (to R-CORE)
-
-> [!NOTE]
-> The template auto-discovers interfaces and creates graphs. You just need to reference them in the dashboard widget. If graphs haven't appeared yet, wait 10–15 minutes for the first SNMP discovery cycle to complete.
-
-### Step 8.4: Add Widget — Open Trigger Count
+This widget displays active triggers and alerts across your network:
 
 1. Click **Add widget**
 2. Configure:
-   - **Type:** `Trigger overview` or `Problems`
-   - **Name:** `Active Problems`
-   - **Host groups:** All three FoE groups
-   - **Show:** `Recent problems` or `Problems`
-   - **Severity filter:** Show from `Warning` and above
+   - **Type:** `Problems`
+   - **Name:** `Live Network Alerts`
+   - **Host groups:** Select `FoE Routers`, `FoE Distribution Switches`, `FoE Access Switches`
+   - **Show:** `Recent problems`
+   - **Severity:** Show all (Warning, Average, High, Disaster)
+3. Click **Add**
 
-### Step 8.5: Optional — Add More Widgets
+---
 
-To make the dashboard impressive for your project:
+### Step 8.4: Add Widget 3 — R-CORE Network Traffic Graph
 
-| Widget Type | Content | Purpose |
-|------------|---------|---------|
-| `System information` | Zabbix server stats | Shows server health |
-| `Clock` | Current time | Visual flair |
-| `Data overview` | CPU utilization for all hosts | At-a-glance CPU across network |
-| `Graph` | R-EDGE NAT translations | Shows internet usage |
-| `Top hosts` | Top 5 by CPU/memory/traffic | Identifies bottlenecks |
+This widget tracks live traffic bandwidth across core router interfaces:
 
-### Step 8.6: Save the Dashboard
+1. Click **Add widget**
+2. Configure:
+   - **Type:** `Graph (classic)`
+   - **Name:** `R-CORE CPU & Traffic`
+   - **Source:** `Graph`
+   - **Graph:** Select `R-CORE: Interface Fa0/0(LINK_TO_R-CORE): Network traffic`
+3. Click **Add**
 
-1. Click **Save changes** in the top-right corner
+---
+
+### Step 8.5: Save and Finalize Dashboard
+
+1. Arrange the widgets cleanly on the dashboard grid.
+2. Click **Save changes** in the top-right corner to lock in your live monitoring dashboard!
 
 ---
 
