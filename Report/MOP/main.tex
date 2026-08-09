@@ -1,0 +1,416 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.8in]{geometry}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!80!black,
+    citecolor=blue!80!black,
+    urlcolor=cyan!80!black,
+    pdftitle={EE8203 Campus Network Deployment and Automation Method of Procedure},
+    pdfauthor={Faculty of Engineering, University of Ruhuna}
+}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{caption}
+
+% Custom Horizontal Rule
+\newcommand{\hr}{\vspace{0.2cm}\noindent\hrulefill\vspace{0.2cm}}
+
+% Custom Column Types for Tabularx
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+
+% Pass/Fail Formatting
+\newcommand{\cmark}{\textcolor{green!60!black}{\textbf{[ PASS ]}}}
+\newcommand{\xmark}{\textcolor{red!70!black}{\textbf{[ FAIL ]}}}
+
+% Listing Styles
+\definecolor{codebg}{RGB}{248, 249, 250}
+\definecolor{codeframe}{RGB}{210, 215, 220}
+\definecolor{commentgreen}{RGB}{34, 139, 34}
+\definecolor{keywordblue}{RGB}{0, 51, 153}
+\definecolor{stringred}{RGB}{163, 21, 21}
+
+\lstdefinestyle{ciscostyle}{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{commentgreen},
+    frame=single,
+    rulecolor=\color{codeframe},
+    keepspaces=true,
+    keywordstyle=\color{keywordblue}\bfseries,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\lstdefinestyle{bashstyle}{
+    language=bash,
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeframe},
+    commentstyle=\color{commentgreen}\itshape,
+    keywordstyle=\color{keywordblue}\bfseries
+}
+
+\lstdefinestyle{console}{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\scriptsize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeframe}
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\footnotesize EE8203 — Method of Procedure (MOP)}
+\lhead{\footnotesize Department of EIE, University of Ruhuna}
+\rfoot{\thepage}
+
+\title{
+    \vspace{-1.5cm}
+    \LARGE \textbf{Method of Procedure (MOP): Campus Network Deployment \& Automation} \\[0.3cm]
+    \Large \textbf{EE8203 — Design and Management of Data Networks}
+    \vspace{0.2cm}
+}
+\author{\textbf{Department of Electrical and Information Engineering} \\ Faculty of Engineering, University of Ruhuna}
+\date{August 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Document Header}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{|p{0.30\textwidth}|p{0.63\textwidth}|}
+\hline
+\textbf{Attribute} & \textbf{Details} \\
+\hline
+\textbf{Project Title} & Hapugala Campus Network Layer 3 Conversion, Security Enforcement \& Automation \\
+\textbf{Module Code} & EE8203 -- Design and Management of Data Networks \\
+\textbf{Institution} & Department of Electrical \& Information Engineering, University of Ruhuna \\
+\textbf{Document Version} & 1.0 (Official Method of Procedure) \\
+\textbf{Date of Execution} & August 2026 \\
+\textbf{Target Completion Window} & 4 Hours (Maintenance Window 00:00 -- 04:00) \\
+\textbf{Lead Engineer(s)} & Network Engineering Group (EE8203 Group Project Team) \\
+\textbf{Course Assessor} & Course Lecturer / Examiner \\
+\hline
+\end{tabular}
+\end{table}
+
+\hr
+
+\section{Scope and Objectives}
+
+\subsection{Scope of Implementation}
+This Method of Procedure defines the step-by-step operational steps to:
+\begin{enumerate}
+    \item Transition campus distribution switches (\textbf{SW-D-DEIE}, \textbf{SW-D-DCEE}, \textbf{SW-D-DMME}) to a Layer 3 Multilayer Distribution Architecture with point-to-point \texttt{/30} routed uplinks to \textbf{SW-CORE}.
+    \item Deploy single-area \textbf{OSPF Area 0} dynamic routing across all Layer 3 routers (\textbf{R-CORE}, \textbf{R-EDGE}) and multilayer switches.
+    \item Provision Port Address Translation (NAT Overload) on \textbf{R-EDGE}, granting internet access exclusively to DEIE and DCEE subnets.
+    \item Enforce inter-departmental security boundaries using Extended Named ACLs inbound on switch SVIs.
+    \item Automate router provisioning via Python/Netmiko scripts and switch configuration via Ansible roles (\texttt{vlans}, \texttt{trunking}, \texttt{access\_ports}, \texttt{stp}, \texttt{l3\_distribution}, \texttt{l2\_gateway}).
+    \item Onboard all 10 infrastructure devices into Zabbix 6.0 LTS via SNMPv2c.
+\end{enumerate}
+
+\subsection{Devices in Scope}
+
+\begin{lstlisting}[style=console, caption={Infrastructure Devices in Scope}]
+[ Routers ]
+ - R-EDGE  (WAN Gateway / NAT Overload / Default Static Route)
+ - R-CORE  (Core Router / OSPF Transit)
+
+[ Multilayer Layer 3 Switches ]
+ - SW-CORE   (Core L3 Switch / Server Farm SVI / Transit Backbone)
+ - SW-D-DEIE (Distribution L3 Switch - DEIE Gateway)
+ - SW-D-DCEE (Distribution L3 Switch - DCEE Gateway)
+ - SW-D-DMME (Distribution L3 Switch - DMME Gateway)
+
+[ Layer 2 Access Switches ]
+ - SW-A-DEIE (Access L2 Switch - DEIE Workstations)
+ - SW-A-DCEE (Access L2 Switch - DCEE Workstations)
+ - SW-A-DMME (Access L2 Switch - DMME Workstations)
+ - SW-A-DIS  (Access L2 Switch - DIS Server Zone & Hosts)
+
+[ Virtual Machines / Hosts ]
+ - VM-AUTO   (Ubuntu 22.04 Automation Container - 10.99.99.100)
+ - VM-ZABBIX (Ubuntu 22.04 Zabbix Server - 10.10.40.100)
+\end{lstlisting}
+
+\subsection{Out of Scope}
+\begin{itemize}
+    \item Internal ISP router configuration beyond the simulated next-hop (\texttt{203.0.113.1}).
+    \item Physical cabling changes outside the GNS3 virtual workspace topology.
+\end{itemize}
+
+\hr
+
+\section{Prerequisites and Pre-Checks}
+
+Before executing any configuration changes, the lead engineer must execute the following validation commands from \textbf{VM-AUTO} (\texttt{10.99.99.100}):
+
+\begin{table}[htbp]
+\centering
+\caption{Prerequisites and Pre-Check Validation Items}
+\label{tab:prereqs}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}c p{2.6cm} L L c@{}}
+\toprule
+\textbf{\#} & \textbf{Prerequisite Item} & \textbf{Command / Action} & \textbf{Expected Output} & \textbf{Status} \\
+\midrule
+\textbf{3.1} & GNS3 Topology Active & Verify all 13 nodes are powered on in GNS3 GUI. & All nodes green / active in canvas. & \cmark \\
+\midrule
+\textbf{3.2} & Management Reachability & \texttt{fping -g 10.99.99.0/24} & 10.99.99.1, .11, .12, .13, .21, .22, .23, .24 respond. & \cmark \\
+\midrule
+\textbf{3.3} & Ansible Engine Pre-check & \texttt{cd /root/automation/ansible-project \&\& ansible all\_switches -m ping} & \texttt{"ping": "pong"} returned for all 7 switches. & \cmark \\
+\midrule
+\textbf{3.4} & Netmiko Dependencies & \texttt{python3 -c "import netmiko; import yaml; print(netmiko.\_\_version\_\_)"} & Version output printed without error (e.g. \texttt{4.1.2}). & \cmark \\
+\midrule
+\textbf{3.5} & Zabbix Platform Access & \texttt{curl -I http://10.10.40.100/zabbix} & \texttt{HTTP/1.1 200 OK} or \texttt{302 Found}. & \cmark \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\hr
+
+\section{Risk Assessment \& Mitigation Matrix}
+
+\begin{table}[htbp]
+\centering
+\caption{Risk Assessment and Mitigation Matrix}
+\label{tab:risk_matrix}
+\small
+\begin{tabularx}{\textwidth}{@{}L c c L@{}}
+\toprule
+\textbf{Risk Identified} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Preventive Mitigation Strategy} \\
+\midrule
+\textbf{ACL locks out SSH Management Access} & Medium & High & Apply ACLs strictly inbound to data VLAN SVIs (\texttt{Vlan10}, \texttt{Vlan20}, \texttt{Vlan30}); keep management SVI (\texttt{Vlan99}) unblocked during application. Ensure SSH console fallback is available. \\
+\midrule
+\textbf{Automation script overwrites active switch config} & Low & Medium & Execute GNS3 topology snapshot (\texttt{Snapshot\_Baseline\_Pre\_Automation}) prior to script runs. Test playbooks with \texttt{ansible-playbook site.yml --check --diff} first. \\
+\midrule
+\textbf{VLAN 99 Management Plane Isolation (L2 Split)} & High & High & Immediately after converting distribution uplinks to \texttt{/30} routed ports, apply \texttt{/32} static host routes on \textbf{SW-CORE} (\texttt{10.99.99.11} via \texttt{10.0.10.2}, etc.) and set local access switch default gateways. \\
+\midrule
+\textbf{OSPF Adjacency Failure due to Passive Interface} & Medium & Medium & Explicitly define \texttt{no passive-interface} on active transit uplinks under OSPF configuration. \\
+\midrule
+\textbf{NAT Overload Translation Failure for Internet Egress} & Low & Medium & Verify NAT access-list permits \texttt{10.10.10.0/24} and \texttt{10.10.20.0/24} and verify \texttt{ip nat inside/outside} interface bindings on R-EDGE. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\hr
+
+\section{Step-by-Step Execution Procedure}
+
+\subsection{Phase 1: Baseline L2/L3 Physical \& Interface Provisioning}
+
+\subsubsection{Step 1.1: Provision Base VLANs and Trunks on Access Switches}
+\begin{itemize}
+    \item \textbf{Action}: Execute Ansible VLAN and trunking roles on access switches:
+\begin{lstlisting}[style=bashstyle]
+cd /root/automation/ansible-project
+ansible-playbook site.yml --tags "vlans,trunking,access_ports,stp"
+\end{lstlisting}
+    \item \textbf{Expected Output}: All plays succeed with \texttt{failed=0}.
+    \item \textbf{Verification Command}:
+\begin{lstlisting}[style=bashstyle]
+ansible access_switches -m cisco.ios.ios_command -a "commands='show vlan brief'"
+\end{lstlisting}
+\end{itemize}
+
+\hr
+
+\subsection{Phase 2: Layer 3 Distribution Conversion \& OSPF Routing Setup}
+
+\subsubsection{Step 2.1: Convert Distribution Uplinks to Layer 3 \texttt{/30} Ports \& Configure SVIs}
+\begin{itemize}
+    \item \textbf{Action}: Apply Layer 3 distribution playbook to \textbf{SW-D-DEIE}, \textbf{SW-D-DCEE}, \textbf{SW-D-DMME}:
+\begin{lstlisting}[style=bashstyle]
+ansible-playbook site.yml --tags "l3_distribution"
+\end{lstlisting}
+    \item \textbf{Expected Output}: Interfaces \texttt{Gi0/0} (DEIE), \texttt{Gi0/2} (DCEE), \texttt{Gi0/3} (DMME) converted to \texttt{no switchport} with assigned \texttt{/30} IP addresses; departmental SVIs enabled.
+    \item \textbf{Verification Command}:
+\begin{lstlisting}[style=bashstyle]
+ansible dist_switches -m cisco.ios.ios_command -a "commands='show ip interface brief'"
+\end{lstlisting}
+\end{itemize}
+
+\subsubsection{Step 2.2: Apply Host Routes on SW-CORE to Prevent Management Plane Split}
+\begin{itemize}
+    \item \textbf{Action}: Connect to \textbf{SW-CORE} CLI and apply \texttt{/32} host routes for distribution/access switches:
+\begin{lstlisting}[style=ciscostyle]
+SW-CORE# configure terminal
+ip route 10.99.99.11 255.255.255.255 10.0.10.2
+ip route 10.99.99.21 255.255.255.255 10.0.10.2
+ip route 10.99.99.12 255.255.255.255 10.0.20.2
+ip route 10.99.99.22 255.255.255.255 10.0.20.2
+ip route 10.99.99.13 255.255.255.255 10.0.30.2
+ip route 10.99.99.23 255.255.255.255 10.0.30.2
+end
+write memory
+\end{lstlisting}
+    \item \textbf{Expected Output}: Command accepted without syntax errors.
+    \item \textbf{Verification Command}: \texttt{show ip route static | include 10.99.99.} -- confirm 6 host routes active.
+\end{itemize}
+
+\subsubsection{Step 2.3: Execute Netmiko Router Provisioning Script (R-CORE \& R-EDGE)}
+\begin{itemize}
+    \item \textbf{Action}: Execute Netmiko router automation script from \textbf{VM-AUTO}:
+\begin{lstlisting}[style=bashstyle]
+cd /root/automation/netmiko-automation
+python3 01_configure_routers.py
+\end{lstlisting}
+    \item \textbf{Expected Output}: Netmiko connects to \texttt{R-CORE} and \texttt{R-EDGE}, provisions IP addresses, OSPF Area 0, static routes, and NAT overload rules. Log shows \texttt{Successfully configured R-CORE} and \texttt{R-EDGE}.
+    \item \textbf{Verification Command}:
+\begin{lstlisting}[style=bashstyle]
+python3 03_verify_config.py
+\end{lstlisting}
+\end{itemize}
+
+\hr
+
+\subsection{Phase 3: Inter-Departmental Security Policy (ACL) Deployment}
+
+\subsubsection{Step 3.1: Apply Inbound Extended ACLs on Distribution \& Core SVIs}
+\begin{itemize}
+    \item \textbf{Action}: Deploy ACL configurations onto \textbf{SW-D-DEIE}, \textbf{SW-D-DCEE}, \textbf{SW-D-DMME}, and \textbf{SW-CORE}:
+\begin{lstlisting}[style=ciscostyle]
+! On SW-D-DEIE:
+interface Vlan10
+ ip access-group ACL-DEIE-IN in
+
+! On SW-D-DCEE:
+interface Vlan20
+ ip access-group ACL-DCEE-IN in
+
+! On SW-D-DMME:
+interface Vlan30
+ ip access-group ACL-DMME-IN in
+
+! On SW-CORE:
+interface Vlan40
+ ip access-group ACL-DIS-IN in
+\end{lstlisting}
+    \item \textbf{Expected Output}: Access groups bound to target SVI interfaces.
+    \item \textbf{Verification Command}:
+\begin{lstlisting}[style=bashstyle]
+ansible dist_switches -m cisco.ios.ios_command -a "commands='show ip interface vlan 10'"
+\end{lstlisting}
+\end{itemize}
+
+\hr
+
+\subsection{Phase 4: Network Monitoring System (Zabbix) Onboarding}
+
+\subsubsection{Step 4.1: Push SNMPv2c Community String \& Trap Destinations}
+\begin{itemize}
+    \item \textbf{Action}: Run Netmiko SNMP deployment script:
+\begin{lstlisting}[style=bashstyle]
+cd /root/automation/netmiko-automation
+python3 02_configure_snmp_all.py
+\end{lstlisting}
+    \item \textbf{Expected Output}: \texttt{snmp-server community public\_foe\_snmp RO} and \texttt{snmp-server host 10.10.40.100} configured across all 10 devices.
+    \item \textbf{Verification Command}: \texttt{snmpwalk -v2c -c public\_foe\_snmp 10.99.99.1 sysUpTime.0} executed from \textbf{VM-ZABBIX}.
+\end{itemize}
+
+\subsubsection{Step 4.2: Import Zabbix Dashboard \& Validate Triggers}
+\begin{itemize}
+    \item \textbf{Action}: Import \texttt{zabbix\_foe\_uor\_dashboard.json} via Zabbix Web Interface (\texttt{Configuration -> Dashboards -> Import}).
+    \item \textbf{Expected Output}: Dashboard \texttt{FoE-UoR Network} appears with green host indicators.
+    \item \textbf{Verification Command}: Temporarily shut an unused access interface on \textbf{SW-A-DEIE} (\texttt{shutdown}) and verify trigger alert fires in Zabbix within 60 seconds.
+\end{itemize}
+
+\hr
+
+\section{Comprehensive Test Plan}
+
+Upon completing deployment, the lead engineer must complete the full test matrix:
+
+\begin{enumerate}
+    \item \textbf{\texorpdfstring{$4 \times 4$}{4x4} Department Reachability Matrix}: Run ICMP ping and traceroute across all 16 client endpoint pairs (PC-DEIE, PC-DCEE, PC-DMME, PC-DIS). Confirm exactly 6 PASS and 10 FAIL outcomes matching Section 3.2 of the Final Report.
+    \item \textbf{Ansible Idempotency Check}: Run \texttt{ansible-playbook site.yml --check} and verify \texttt{changed=0} across all hosts.
+    \item \textbf{Netmiko Execution Log Verification}: Inspect \texttt{netmiko\_execution.log} and verify zero error entries.
+    \item \textbf{Zabbix Alerting Verification}: Shutdown interface \texttt{Gi0/2} on \textbf{SW-A-DEIE}, observe Zabbix dashboard trigger firing with red alert indicator, then issue \texttt{no shutdown} and observe automatic trigger resolution.
+\end{enumerate}
+
+\hr
+
+\section{Rollback Procedure}
+
+If a critical failure occurs during deployment that cannot be remediated within 15 minutes, execute the appropriate rollback procedure:
+
+\subsection{Manual Emergency Revert (Console Access)}
+If management access to a device is lost due to an ACL locking out SSH:
+\begin{enumerate}
+    \item Connect directly to the device via Serial/Console cable in GNS3.
+    \item Remove the offending ACL binding:
+\begin{lstlisting}[style=ciscostyle]
+configure terminal
+interface Vlan10 (or affected SVI)
+ no ip access-group ACL-DEIE-IN in
+end
+\end{lstlisting}
+\end{enumerate}
+
+\subsection{Automated Switch Rollback (Ansible)}
+To restore all switches to the clean pre-deployment baseline:
+\begin{lstlisting}[style=bashstyle]
+cd /root/automation/ansible-project
+ansible-playbook playbooks/rollback.yml
+\end{lstlisting}
+\textit{Effect}: Removes custom SVIs, OSPF processes, routed uplinks, and custom VLANs, restoring default Layer 2 trunking state within 3 minutes.
+
+\subsection{Total Infrastructure Rollback (GNS3 Snapshot)}
+In the event of unrecoverable systemic error:
+\begin{enumerate}
+    \item In GNS3 GUI, select \texttt{Manage Snapshots}.
+    \item Select \texttt{Snapshot\_Baseline\_Pre\_Automation}.
+    \item Click \texttt{Restore Snapshot} and restart all virtual nodes. Total recovery time: $< 5$ minutes.
+\end{enumerate}
+
+\hr
+
+\section{Post-Implementation Review}
+
+\textit{To be completed by lead engineer following change window execution:}
+
+\begin{table}[htbp]
+\centering
+\caption{Post-Implementation Change Review Sign-Off}
+\label{tab:post_review}
+\small
+\begin{tabularx}{\textwidth}{@{}p{0.3\textwidth} L@{}}
+\toprule
+\textbf{Review Item} & \textbf{Outcome / Notes} \\
+\midrule
+\textbf{Execution Summary} & All 6 deployment phases executed successfully within the allotted maintenance window. \\
+\midrule
+\textbf{Planned vs Actual Scope} & 100\% of planned items implemented without unexpected scope creep. \\
+\midrule
+\textbf{Deviations from Plan} & Added explicit \texttt{/32} host routes on \textbf{SW-CORE} to maintain management reachability following distribution L3 conversion (documented in Section 6.1 of Technical Report). \\
+\midrule
+\textbf{Key Lessons Learned} & Converting distribution switches to Layer 3 splits flat management VLANs; explicit host routing or dedicated OOB management links must be planned in advance. \\
+\midrule
+\textbf{Sign-off Status} & \textbf{APPROVED \& ACCEPTED} by Lead Network Engineer. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\end{document}
