@@ -202,11 +202,11 @@ INPUT .\images\topology.png
 INPUT .\images\topology.png
 INPUT .\images\topology.png
 INPUT .\images\topology.png
-INPUT D:\miktex\fonts\tfm\public\cm\cmtt8.tfm
 INPUT D:\miktex\fonts\tfm\public\amsfonts\cmextra\cmex7.tfm
 INPUT D:\miktex\fonts\tfm\public\amsfonts\symbols\msam5.tfm
 INPUT D:\miktex\fonts\tfm\public\amsfonts\symbols\msbm5.tfm
 INPUT D:\miktex\fonts\tfm\public\cm\cmbx8.tfm
+INPUT D:\miktex\fonts\tfm\public\cm\cmtt8.tfm
 INPUT D:\miktex\fonts\tfm\public\amsfonts\cmextra\cmex7.tfm
 INPUT D:\miktex\fonts\tfm\public\amsfonts\symbols\msam10.tfm
 INPUT D:\miktex\fonts\tfm\public\amsfonts\symbols\msam7.tfm
@@ -216,7 +216,6 @@ INPUT D:\miktex\fonts\tfm\public\cm\cmbx10.tfm
 INPUT D:\miktex\fonts\tfm\public\cm\cmtt10.tfm
 INPUT D:\miktex\fonts\tfm\jknappen\ec\tcrm1095.tfm
 INPUT D:\miktex\fonts\tfm\public\cm\cmtt9.tfm
-INPUT D:\miktex\fonts\tfm\public\cm\cmr9.tfm
 INPUT D:\miktex\fonts\tfm\jknappen\ec\tcrm1000.tfm
 INPUT D:\miktex\fonts\tfm\public\cm\cmmi12.tfm
 INPUT D:\miktex\fonts\tfm\public\cm\cmsy10.tfm
@@ -243,6 +242,7 @@ INPUT .\images\cell[2,4].png
 INPUT .\images\cell[2,4].png
 INPUT .\images\cell[2,4].png
 INPUT .\images\cell[2,4].png
+INPUT D:\miktex\fonts\tfm\public\cm\cmr9.tfm
 INPUT D:\miktex\tex\latex\listings\lstlang1.sty
 INPUT D:\miktex\tex\latex\listings\lstlang1.sty
 INPUT D:\miktex\tex\latex\listings\lstlang1.sty

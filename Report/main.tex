@@ -111,7 +111,7 @@
 \vfill
 
 {\LARGE \textbf{Department-Level Campus Network Design, Multi-Layer Routing, Security Policy Enforcement, Dual-Tier Automation \& Monitoring}}\\[0.6cm]
-{\large \textbf{EE8203 — Design and Management of Data Networks}}
+{\large \textbf{EE8203 Design and Management of Data Networks}}
 
 \vfill
 
@@ -173,17 +173,17 @@ Wijesinghe D.M.A.B. & - & EG/2021/4875 \\
 
 This report covers how we designed, built, secured, automated, and monitored a department-level campus network for the Hapugala premises of the Faculty of Engineering, University of Ruhuna. Four departments sit on this network: Electrical \& Information Engineering (\textbf{DEIE}), Civil \& Environmental Engineering (\textbf{DCEE}), Mechanical \& Manufacturing Engineering (\textbf{DMME}), and Inter-Disciplinary Studies (\textbf{DIS}).
 
-We built the network around Cisco's Three-Layer Hierarchical Model — core, distribution, and access — since it gave us the availability, segmentation, and manageability the brief called for. The one design decision worth calling out up front is moving the distribution layer away from plain Layer 2 trunking toward a \textbf{Layer 3 Multilayer Distribution} setup. Instead of trunking VLANs all the way back to the core, each distribution switch (\textbf{SW-D-DEIE}, \textbf{SW-D-DCEE}, \textbf{SW-D-DMME}) now terminates its own VLAN locally and connects to the core switch (\textbf{SW-CORE}) over routed \texttt{/30} point-to-point links running \textbf{OSPF Area 0}. That gets rid of Spanning Tree loops across the backbone, brings convergence down to well under a second, and makes better use of the available bandwidth.
+We built the network around Cisco's Three-Layer Hierarchical Model core, distribution, and access since it gave us the availability, segmentation, and manageability the brief called for. The one design decision worth calling out up front is moving the distribution layer away from plain Layer 2 trunking toward a \textbf{Layer 3 Multilayer Distribution} setup. Instead of trunking VLANs all the way back to the core, each distribution switch (\textbf{SW-D-DEIE}, \textbf{SW-D-DCEE}, \textbf{SW-D-DMME}) now terminates its own VLAN locally and connects to the core switch (\textbf{SW-CORE}) over routed \texttt{/30} point-to-point links running \textbf{OSPF Area 0}. That gets rid of Spanning Tree loops across the backbone, brings convergence down to well under a second, and makes better use of the available bandwidth.
 
 Security between departments is handled with \textbf{extended named ACLs} applied inbound on the distribution SVIs and core interfaces. DEIE engineering workstations get full two-way access to the server farm; DCEE administrative staff can reach DIS over HTTP/HTTPS only, with ICMP blocked; DMME's workshop lab is walled off from every other academic subnet; and established TCP return traffic is allowed through while anything unsolicited from outside is dropped. We verified all of this with a full \textbf{\texorpdfstring{$4 \times 4$}{4x4} department reachability matrix}, backed by ping and traceroute captures plus ACL hit-counter output.
 
 We also wanted to avoid hand-configuring seven switches and two routers every time something changed, so we built a \textbf{two-tier automation setup}:
 \begin{enumerate}
-    \item \textbf{Python + Netmiko} handles the routers (\textbf{R-CORE}, \textbf{R-EDGE}) — interface provisioning, OSPF, NAT, and pushing out SNMP community strings.
+    \item \textbf{Python + Netmiko} handles the routers (\textbf{R-CORE}, \textbf{R-EDGE}) interface provisioning, OSPF, NAT, and pushing out SNMP community strings.
     \item \textbf{Ansible} (using the \texttt{cisco.ios} collection) handles the switches, with roles split out for \texttt{vlans}, \texttt{trunking}, \texttt{access\_ports}, \texttt{stp}, \texttt{l3\_distribution}, and \texttt{l2\_gateway}. We checked idempotency with \texttt{--check} and kept a rollback playbook on hand for all seven switches.
 \end{enumerate}
 
-For ongoing visibility we stood up \textbf{Zabbix 6.x LTS} on an Ubuntu VM (\textbf{VM-ZABBIX}). Every router and switch is polled over SNMPv2c using the stock Cisco templates, and we added triggers for ICMP outages, interface flaps, high CPU, and a custom check for management-plane splits. A dashboard (\texttt{FoE-UoR Network}) pulls it all together — link health, host status, and open alerts at a glance.
+For ongoing visibility we stood up \textbf{Zabbix 6.x LTS} on an Ubuntu VM (\textbf{VM-ZABBIX}). Every router and switch is polled over SNMPv2c using the stock Cisco templates, and we added triggers for ICMP outages, interface flaps, high CPU, and a custom check for management-plane splits. A dashboard (\texttt{FoE-UoR Network}) pulls it all together link health, host status, and open alerts at a glance.
 
 \hr
 
@@ -247,9 +247,9 @@ Table~\ref{tab:inventory} lists the 13 active devices in the topology, plus the 
 \subsubsection{Why We Moved the Distribution Layer to Layer 3}
 We started out with the distribution switches acting as plain Layer 2 bridges, trunking VLANs 10, 20, 30, and 99 back to \textbf{SW-CORE}. That worked, but it came with problems we didn't want to live with long-term:
 \begin{enumerate}
-    \item \textbf{STP had to block redundant links}: Spanning Tree kept one of every pair of parallel links shut down to avoid loops, which meant paying for bandwidth we couldn't use — and if STP ever misbehaved, the whole campus was one broadcast storm away from trouble.
+    \item \textbf{STP had to block redundant links}: Spanning Tree kept one of every pair of parallel links shut down to avoid loops, which meant paying for bandwidth we couldn't use and if STP ever misbehaved, the whole campus was one broadcast storm away from trouble.
     \item \textbf{Inter-VLAN traffic took the long way round}: anything crossing VLANs had to hop over an L2 trunk to SW-CORE just to get routed, adding latency and loading up the backbone unnecessarily.
-    \item \textbf{VLAN 99 got split up}: once we cut over the distribution uplinks to routed \texttt{/30} links, VLAN 99 stopped being one contiguous Layer 2 domain. We had to add explicit \texttt{/32} host routes on SW-CORE to keep management traffic reaching every node — more on that in Section~6.1.
+    \item \textbf{VLAN 99 got split up}: once we cut over the distribution uplinks to routed \texttt{/30} links, VLAN 99 stopped being one contiguous Layer 2 domain. We had to add explicit \texttt{/32} host routes on SW-CORE to keep management traffic reaching every node more on that in Section~6.1.
 \end{enumerate}
 
 Once the default gateways (SVIs) moved down to \textbf{SW-D-DEIE}, \textbf{SW-D-DCEE}, and \textbf{SW-D-DMME}, Layer 2 broadcasts stayed local to each access switch instead of spreading across the backbone. The uplinks to SW-CORE became routed point-to-point links (\texttt{no switchport}), which opened the door to equal-cost multipath routing and OSPF reconvergence in well under a second.
@@ -335,7 +335,7 @@ ip route 0.0.0.0 0.0.0.0 FastEthernet0/0 203.0.113.1
 \textbf{R-CORE} has its own static default pointing at \textbf{R-EDGE} (\texttt{10.0.0.1}), and we redistribute that into OSPF with \texttt{default-information originate} so SW-CORE and the distribution switches all learn a default route without us configuring it on each one individually.
 
 \subsubsection{Network Address Translation (PAT) Policy}
-\textbf{R-EDGE} does Port Address Translation (NAT overload) for internet access. Per Section 3.3 of the project brief, \textbf{only DEIE (VLAN 10) and DCEE (VLAN 20) get internet egress} — DMME (VLAN 30) and DIS (VLAN 40) are deliberately left out of the NAT pool.
+\textbf{R-EDGE} does Port Address Translation (NAT overload) for internet access. Per Section 3.3 of the project brief, \textbf{only DEIE (VLAN 10) and DCEE (VLAN 20) get internet egress} DMME (VLAN 30) and DIS (VLAN 40) are deliberately left out of the NAT pool.
 
 \begin{lstlisting}[style=ciscostyle, caption={R-EDGE NAT ACL Configuration}]
 ! R-EDGE NAT ACL Configuration
@@ -607,7 +607,7 @@ automation/ansible-project/
     \item \textbf{Play 2}: set up 802.1Q trunking between access and distribution (\texttt{roles/trunking}).
     \item \textbf{Play 3}: assign access ports and enable portfast (\texttt{roles/access\_ports}).
     \item \textbf{Play 4}: configure Spanning Tree (\texttt{roles/stp}).
-    \item \textbf{Play 5}: build out the Layer 3 distribution switches — SVIs, routed uplinks, OSPF (\texttt{roles/l3\_distribution}).
+    \item \textbf{Play 5}: build out the Layer 3 distribution switches SVIs, routed uplinks, OSPF (\texttt{roles/l3\_distribution}).
     \item \textbf{Play 6}: point access switches at their default gateway (\texttt{roles/l2\_gateway}).
     \item \textbf{Play 7}: verify the management plane and save configs (\texttt{cisco.ios.ios\_config}).
 \end{enumerate}
@@ -702,7 +702,7 @@ We configured four trigger categories:
     \begin{itemize}
         \item \textit{Expression}: \texttt{min(/Cisco IOS SNMP/system.cpu.util[cpmCPUTotal5minRev.1],60s)>80} (Severity: \textbf{WARNING})
     \end{itemize}
-    \item \textbf{Management Plane Split Protection (custom)}: watches the VLAN 99 SVI on each distribution switch. If one drops, we get an immediate warning that the management plane might be splitting apart — this is the same failure mode we ran into in Section~6.1, so we wanted eyes on it going forward.
+    \item \textbf{Management Plane Split Protection (custom)}: watches the VLAN 99 SVI on each distribution switch. If one drops, we get an immediate warning that the management plane might be splitting apart this is the same failure mode we ran into in Section~6.1, so we wanted eyes on it going forward.
     \begin{itemize}
         \item \textit{Expression}: \texttt{last(/SW-D-DEIE/net.if.status[ifOperStatus.Vlan99])=2} (Severity: \textbf{DISASTER})
     \end{itemize}
@@ -764,7 +764,7 @@ OSPF wouldn't come up between \textbf{SW-CORE} and \textbf{R-CORE}, and separate
 \subsubsection{Root Cause Analysis}
 Two things, as it turned out:
 \begin{enumerate}
-    \item \texttt{passive-interface default} on SW-CORE was silently suppressing OSPF Hellos on \texttt{Gi0/1} — we'd forgotten to exempt that interface.
+    \item \texttt{passive-interface default} on SW-CORE was silently suppressing OSPF Hellos on \texttt{Gi0/1} we'd forgotten to exempt that interface.
     \item \texttt{ACL-MGMT-IN} on SW-CORE had no explicit \texttt{permit icmp} entries for the transit subnets (\texttt{10.0.0.0/30}, \texttt{10.0.1.0/30}), so the implicit deny at the end was catching pings that should have gone through.
 \end{enumerate}
 
