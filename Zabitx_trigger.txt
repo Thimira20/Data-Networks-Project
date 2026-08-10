@@ -1,0 +1,12 @@
+//R-CORE:
+
+configure terminal
+interface FastEthernet0/0
+ shutdown
+end
+
+
+configure terminal
+interface FastEthernet0/0
+ no shutdown
+end
