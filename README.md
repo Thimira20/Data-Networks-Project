@@ -4,7 +4,7 @@ This project documents the design and implementation of a campus network with VL
 
 ## Topology Overview
 
-![Network Topology](./network%20topology/topology.png)
+![Network Topology](./network%20topology/image.png)
 
 ## Project Highlights
 
