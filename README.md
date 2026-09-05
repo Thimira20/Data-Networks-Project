@@ -4,7 +4,7 @@ This project documents the design and implementation of a campus network with VL
 
 ## Topology Overview
 
-![Network Topology](network%20topology/topology.png)
+![Network Topology](./network%20topology/topology.png)
 
 ## Project Highlights
 
@@ -55,7 +55,7 @@ This project documents the design and implementation of a campus network with VL
 Some useful files in this repo:
 
 - `Network_Implementation_Guide.md` — step-by-step implementation guide
-- `topology.png` — network topology diagram
+- `network topology/topology.png` — network topology diagram
 - `VLAN_CONFIG/` — VLAN configuration files
 - `automation/` and `netmiko_automation/` — automation-related scripts and files
 - `trunk_config.md` — trunking reference
@@ -84,10 +84,6 @@ After setup, the project should support:
 - Successful inter-VLAN communication
 - Management access to switches via VLAN 99
 - OSPF neighbor adjacency between `SW-Core` and `R-CORE`
-
-## Notes
-
-This repository contains multiple related network design and automation artifacts. If you want, I can also help you turn this into a more polished README with sections like Features, Setup, Usage, and Screenshots.
 
 ## License
 
